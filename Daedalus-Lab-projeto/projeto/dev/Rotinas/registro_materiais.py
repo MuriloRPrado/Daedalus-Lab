@@ -20,6 +20,7 @@ from database import (
     Materiais, MateriaisEstado, MateriaisEstadosFonte, MateriaisFonte, Propriedade,
     ValorPropriedades, ValorPropriedadesFonte, engine,
 )
+from Rotinas.cache_fontes import contexto_atual
 from Rotinas.fontes_firecrawl import normalizar_url
 #########################################################################
 
@@ -49,8 +50,16 @@ def _normalizar_doi(doi: str) -> str:
     return re.sub(r"^(https?://(dx\.)?doi\.org/|doi:)", "", doi)
 
 
+def _validar_projeto_do_agente(id_projeto: int) -> None:
+    """Impede que o agente em execução leia ou grave dados de outro projeto."""
+    id_projeto_agente, _ = contexto_atual()
+    if id_projeto_agente is not None and id_projeto != id_projeto_agente:
+        raise ValueError(f"Esta execução pertence ao projeto {id_projeto_agente}; use id_projeto={id_projeto_agente}.")
+
+
 def _bloquear_projeto(session: Session, id_projeto: int) -> None:
     """Evita que duas gravações simultâneas do mesmo projeto criem registros repetidos."""
+    _validar_projeto_do_agente(id_projeto)
     session.execute(text("SELECT pg_advisory_xact_lock(:chave)"), {"chave": id_projeto})
 
 
@@ -510,6 +519,7 @@ def listar_materiais_projeto(id_projeto: int) -> dict:
     Args:
         id_projeto: ID do projeto.
     """
+    _validar_projeto_do_agente(id_projeto)
     with Session(engine) as session:
         materiais = session.execute(
             select(Materiais).where(Materiais.id_projeto == id_projeto).order_by(Materiais.id_material)
