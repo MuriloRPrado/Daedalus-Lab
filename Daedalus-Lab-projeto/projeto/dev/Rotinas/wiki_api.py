@@ -228,7 +228,7 @@ def consultar_material_wikidata(id_item: str, idioma: str = "pt") -> dict:
     id_item, idioma = _texto(id_item, "id_item").upper(), _idioma(idioma)
     if not _ID_ITEM.fullmatch(id_item):
         raise ValueError("id_item inválido. Formato esperado: Q25045309.")
-    item = _entidades({id_item}, "labels|descriptions|claims|sitelinks/urls", idioma).get(id_item) or {}
+    item = _entidades({id_item}, "info|labels|descriptions|claims|sitelinks/urls", idioma).get(id_item) or {}
     if not item or "missing" in item:
         return _retorno("Wikidata", id_item, None, idioma=idioma, erro=f"Item não encontrado: {id_item}")
 
