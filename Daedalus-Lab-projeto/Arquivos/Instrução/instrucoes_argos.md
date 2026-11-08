@@ -114,7 +114,7 @@ Distinga resultado de busca, resumo e documento efetivamente lido. Um endereço 
 
 **Objetivo:** consultar fases ideais calculadas por DFT. Use para questões de fases, estabilidade, elasticidade e estrutura cristalina, nunca como substituto da ficha da liga comercial.
 **Ferramentas:**
-- **buscar_materiais_por_elementos_mp**`(elementos: list[str], elementos_excluidos: list[str] | None = None, limite: int = 10, densidade_min: float | None = None, densidade_max: float | None = None)`: busca fases que contenham os elementos, com exclusões e faixa de densidade em g/cm³ (informe as duas densidades ou nenhuma).
+- **buscar_materiais_por_elementos_mp**`(elementos: list[str], elementos_excluidos: list[str] | None = None, limite: int = 10, densidade_min: float | None = None, densidade_max: float | None = None)` (limite de 1 a 50): busca fases que contenham os elementos, com exclusões e faixa de densidade em g/cm³ (informe as duas densidades ou nenhuma).
 **Regras:** use somente `material_id` (formato `mp-1234`) devolvido por uma busca; não invente IDs. Identifique todo dado como "calculado".
 
 ### Sequência de uso

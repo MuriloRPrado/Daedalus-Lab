@@ -40,12 +40,12 @@ ferramenta = partial(function_tool, failure_error_function=_erro_para_agente)
 
 
 @ferramenta
-def buscar_materiais_mp(sistema_quimico: str, limite: int = 10) -> list[dict]:
+def buscar_materiais_mp(sistema_quimico: str, limite: int = 10) -> dict:
     """Busca fases no Materials Project pelo sistema químico (dados calculados por DFT).
 
     Args:
         sistema_quimico: Sistema químico com elementos separados por hífen (ex.: "Al-Mg"). Não aceita designação comercial.
-        limite: Quantidade máxima de resultados.
+        limite: Quantidade máxima de resultados (1 a 50).
     """
     return mp.buscar_materiais(sistema_quimico=sistema_quimico, limite=limite)
 
@@ -57,13 +57,13 @@ def buscar_materiais_por_elementos_mp(
     limite: int = 10,
     densidade_min: float | None = None,
     densidade_max: float | None = None,
-) -> list[dict]:
+) -> dict:
     """Busca fases no Materials Project que contenham os elementos, com exclusões e faixa opcional de densidade (dados calculados por DFT).
 
     Args:
         elementos: Símbolos dos elementos que a fase deve conter (ex.: ["Al", "Mg"]).
         elementos_excluidos: Símbolos dos elementos que não podem estar na fase.
-        limite: Quantidade máxima de resultados.
+        limite: Quantidade máxima de resultados (1 a 50).
         densidade_min: Densidade mínima em g/cm³. Informe junto da máxima.
         densidade_max: Densidade máxima em g/cm³. Informe junto da mínima.
     """

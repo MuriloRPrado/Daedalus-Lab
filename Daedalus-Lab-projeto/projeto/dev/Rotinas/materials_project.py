@@ -10,17 +10,18 @@ import os
 from datetime import datetime, timezone
 from mp_api.client import MPRester
 from monty.json import MontyEncoder
-from pymatgen.analysis.phase_diagram import PhaseDiagram
-from pymatgen.core import Element
-from pprint import pprint
 
 import Rotinas.configuracao  # noqa: F401
+from Rotinas.cache_fontes import registrar_consulta
 ##############################################################################
 
 chave = os.getenv("MaterialsProject")
 
 if not chave:
     raise ValueError("A variável MaterialsProject não foi configurada")
+
+SERVICO = "materials_project"
+LIMITE_MAXIMO = 50
 
 ##############################################################################
 """FUNÇÃO PARA VALIDAR SE O ID INFORMADO ESTÁ NO FORMATO CORRETO"""
@@ -33,6 +34,23 @@ def _json_simples(valor):
     if hasattr(valor, "model_dump"):
         valor = valor.model_dump(exclude_unset=True)
     return json.loads(json.dumps(valor, cls=MontyEncoder, allow_nan=False))
+
+"""EXECUTA A CONSULTA NO MATERIALS PROJECT E REGISTRA A CHAMADA NO LOG
+- consultar: função que recebe o MPRester aberto e devolve o retorno já organizado"""
+def _executar(tp_operacao: str, ds_consulta: str, consultar):
+    try:
+        with MPRester(chave) as mpr:
+            resultado = consultar(mpr)
+    except Exception as erro:
+        registrar_consulta(SERVICO, tp_operacao, ds_consulta, ds_erro=str(erro)[:500])
+        raise
+    registrar_consulta(SERVICO, tp_operacao, ds_consulta)
+    return resultado
+
+"""VALIDA O LIMITE DE REGISTROS DAS BUSCAS"""
+def _validar_limite(limite: int) -> None:
+    if not 1 <= limite <= LIMITE_MAXIMO:
+        raise ValueError(f"O limite deve estar entre 1 e {LIMITE_MAXIMO}.")
 
 """ORGANIZA AS INFORMAÇÕES QUE FORAM RETORNADAS PARA RASTREAR DE ONDE VIERAM"""
 def _retorno(mpr, consulta: str, dados, **parametros) -> dict:
@@ -51,7 +69,8 @@ def _retorno(mpr, consulta: str, dados, **parametros) -> dict:
     - campos: quais informados devem ser retornados da consulta"""
 def _consultar_resumo(material_id: str, campos: list[str]) -> dict | None:
     _validar_id(material_id)
-    with MPRester(chave) as mpr:
+
+    def consultar(mpr):
         resultados = mpr.materials.summary.search(
             material_ids=[material_id],
             deprecated=False,
@@ -63,21 +82,31 @@ def _consultar_resumo(material_id: str, campos: list[str]) -> dict | None:
         if not resultados:
             return None
         return _retorno(mpr, "materials.summary", resultados[0], material_id=material_id)
+
+    return _executar("leitura", f"materials.summary {material_id}", consultar)
 ##############################################################################
 
 ##############################################################################
+"""RESUME OS REGISTROS DE UMA BUSCA: ID, FÓRMULA E DENSIDADE CALCULADA"""
+def _resumir_busca(resultados) -> list[dict]:
+    return [
+        {
+            "material_id": str(material.material_id),
+            "formula": material.formula_pretty,
+            "densidade_g_cm3": material.density,
+        }
+        for material in resultados
+    ]
+
 """FUNÇAO PARA CONSULTAR MATERIAIS PELA COMPOSIÇÃO
 - Dados para a consulta:
     - sistema_quimico: composiçao química desejada. Ex: "Al-Mg"
     - limite: quantidade de registros que devem ser retornados. Ex: 3. Se não informado, a função retornará 10 registros por padrão."""
-def buscar_materiais(sistema_quimico: str, limite: int = 10) -> list[dict]:
+def buscar_materiais(sistema_quimico: str, limite: int = 10) -> dict:
 
-    if limite <= 0:                                                             # Validar o limite para garantir que seja um número positivo e maior que zero
-        raise ValueError("O limite deve ser maior que zero")
+    _validar_limite(limite)                                                     # Garante um limite entre 1 e LIMITE_MAXIMO
 
-    materiais = []
-
-    with MPRester(chave) as mpr:
+    def consultar(mpr):
         resultados = mpr.materials.summary.search(
             chemsys=sistema_quimico,                                            # Composição química para a busca
             deprecated=False,
@@ -90,15 +119,10 @@ def buscar_materiais(sistema_quimico: str, limite: int = 10) -> list[dict]:
             num_chunks=1,
             chunk_size=limite,                                                  # Quantidade de registros que devem ser retornados
         )
+        return _retorno(mpr, "materials.summary", _resumir_busca(resultados[:limite]),
+                        sistema_quimico=sistema_quimico, limite=limite)
 
-    for material in resultados:                                                 # Laço para apresentar os dados retornados na consulta
-        materiais.append({
-            "material_id": str(material.material_id),
-            "formula": material.formula_pretty,
-            "Densidade(g/cm3)": material.density,
-    })
-
-    return materiais
+    return _executar("busca", f"chemsys={sistema_quimico}", consultar)
 ##############################################################################
 
 ##############################################################################
@@ -108,10 +132,9 @@ def buscar_materiais(sistema_quimico: str, limite: int = 10) -> list[dict]:
     - elementos_excluidos: retornar materiais que não contenham este elemento informado. Ex: "O"
     - limite: quantidade de registros que devem ser retornados. Ex: 3. Se não informado, a função retornará 10 registros por padrão
     - densidade: informa o range de densidade que os registros retornados devem possuir. Ex: (1.5, 3.0)"""
-def buscar_materiais_por_elementos(elementos: list[str], elementos_excluidos: list[str] | None = None, limite: int = 10, densidade: tuple[float, float] | None = None) -> list[dict]:
+def buscar_materiais_por_elementos(elementos: list[str], elementos_excluidos: list[str] | None = None, limite: int = 10, densidade: tuple[float, float] | None = None) -> dict:
 
-    if limite <= 0:                                                                     # Validar o limite para garantir que seja um número positivo e maior que zero
-        raise ValueError("O limite deve ser maior que zero")
+    _validar_limite(limite)                                                             # Garante um limite entre 1 e LIMITE_MAXIMO
 
     if densidade is not None:
         minimo, maximo = densidade
@@ -131,9 +154,7 @@ def buscar_materiais_por_elementos(elementos: list[str], elementos_excluidos: li
             f"{', '.join(sorted(conflitos))}"
         )
 
-    materiais = []
-
-    with MPRester(chave) as mpr:
+    def consultar(mpr):
         resultados = mpr.materials.summary.search(
             elements=elementos,                                                         # Elementos a ser consultados
             exclude_elements=elementos_excluidos,                                       # Elementos que os materiais retornados não devem possuir
@@ -148,15 +169,12 @@ def buscar_materiais_por_elementos(elementos: list[str], elementos_excluidos: li
             num_chunks=1,
             chunk_size=limite,
         )
+        return _retorno(mpr, "materials.summary", _resumir_busca(resultados[:limite]),
+                        elementos=elementos, elementos_excluidos=elementos_excluidos,
+                        limite=limite, densidade=densidade)
 
-    for material in resultados:                                                         # Laço para apresentar os dados retornados na consulta
-        materiais.append({
-            "material_id": str(material.material_id),
-            "formula": material.formula_pretty,
-            "Densidade(g/cm3)": material.density,
-    })
-
-    return materiais
+    ds_consulta = f"elements={','.join(elementos)}; exclude={','.join(elementos_excluidos or [])}; density={densidade}"
+    return _executar("busca", ds_consulta, consultar)
 ##############################################################################
 
 ##############################################################################
@@ -254,7 +272,8 @@ def consultar_estabilidade(material_id: str) -> dict | None:
 - Nao fornece limite de escoamento ou resistencia a fadiga de uma liga"""
 def consultar_elasticidade(material_id: str) -> dict | None:
     _validar_id(material_id)
-    with MPRester(chave) as mpr:
+
+    def consultar(mpr):
         documentos = mpr.materials.elasticity.search(
             material_ids=[material_id], all_fields=True,
         )
@@ -262,6 +281,8 @@ def consultar_elasticidade(material_id: str) -> dict | None:
             return None
         return _retorno(mpr, "materials.elasticity",
                         [_json_simples(d) for d in documentos], material_id=material_id)
+
+    return _executar("leitura", f"materials.elasticity {material_id}", consultar)
 ##############################################################################
 
 ##############################################################################
@@ -270,7 +291,8 @@ def consultar_elasticidade(material_id: str) -> dict | None:
 - Para rastrear uma propriedade ate seu calculo, combine este retorno com origins do resumo e, quando necessario, consulte o task_id."""
 def consultar_proveniencia(material_id: str) -> dict | None:
     _validar_id(material_id)
-    with MPRester(chave) as mpr:
+
+    def consultar(mpr):
         documentos = mpr.materials.provenance.search(
             material_ids=[material_id], all_fields=True,
         )
@@ -278,16 +300,6 @@ def consultar_proveniencia(material_id: str) -> dict | None:
             return None
         return _retorno(mpr, "materials.provenance",
                         [_json_simples(d) for d in documentos], material_id=material_id)
-##############################################################################"
-#resultado = consultar_estrutura_cristalina("mp-12766")
 
-#if resultado is None:
-#    print("Registro não encontrado.")
-#else:
-#    pprint(resultado["dados"])
-
-#pprint(consultar_material_por_id(material_id))
-#pprint(consultar_estrutura_cristalina(material_id))
-#pprint(consultar_estabilidade("mp-12766"))
-#pprint(consultar_elasticidade(material_id))
-#pprint(consultar_proveniencia(material_id))
+    return _executar("leitura", f"materials.provenance {material_id}", consultar)
+##############################################################################

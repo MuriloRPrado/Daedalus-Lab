@@ -91,7 +91,7 @@ def _parametros_rede(vetores) -> dict:
     except (TypeError, ValueError):
         return {}
     norma = lambda v: math.sqrt(sum(x * x for x in v))
-    ponto = lambda u, v: sum(x * y for x, y in zip(u, v))
+    ponto = lambda u, v: sum(x * y for x, y in zip(u, v, strict=True))
     angulo = lambda u, v: math.degrees(math.acos(max(-1.0, min(1.0, ponto(u, v) / (norma(u) * norma(v))))))
     volume = abs(a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0]) + a[2] * (b[0] * c[1] - b[1] * c[0]))
     return {
