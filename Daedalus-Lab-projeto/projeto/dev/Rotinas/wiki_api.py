@@ -45,7 +45,7 @@ def _idioma(idioma: str) -> str:
     return idioma
 
 
-def _api(servico: str, url: str, parametros: dict, consulta: str) -> dict:
+def _api(servico: str, url: str, parametros: dict, consulta: str, operacao: str = "busca") -> dict:
     parametros = {**parametros, "format": "json", "formatversion": 2}
     try:
         resposta = requests.get(url, params=parametros, headers={"User-Agent": user_agent()}, timeout=(10, 60))
@@ -54,9 +54,9 @@ def _api(servico: str, url: str, parametros: dict, consulta: str) -> dict:
         if "error" in corpo:
             raise ValueError(f"{corpo['error'].get('code')}: {corpo['error'].get('info')}")
     except (requests.RequestException, ValueError) as erro:
-        registrar_consulta(servico, "busca", consulta, ds_erro=str(erro)[:500])
+        registrar_consulta(servico, operacao, consulta, ds_erro=str(erro)[:500])
         raise RuntimeError(f"Não foi possível consultar {servico}: {erro}"[:400]) from erro
-    registrar_consulta(servico, "busca", consulta)
+    registrar_consulta(servico, operacao, consulta)
     return corpo
 
 
@@ -116,7 +116,7 @@ def ler_wikipedia(titulo: str, idioma: str = "pt", inicio: int = 0, max_caracter
         "action": "query", "titles": titulo, "redirects": 1,
         "prop": "extracts|info|pageprops|revisions", "explaintext": 1, "inprop": "url",
         "ppprop": "wikibase_item", "rvprop": "ids|timestamp",
-    }, titulo)
+    }, titulo, "leitura")
     paginas = (corpo.get("query") or {}).get("pages") or []
     pagina = paginas[0] if paginas else {}
     if not pagina or pagina.get("missing") or pagina.get("invalid"):
@@ -177,7 +177,7 @@ def _entidades(ids: set[str], props: str, idioma: str) -> dict:
         corpo = _api("wikidata", URL_WIKIDATA, {
             "action": "wbgetentities", "ids": "|".join(ids[i:i + 50]), "props": props,
             "languages": f"{idioma}|en", "languagefallback": 1,
-        }, "|".join(ids[i:i + 50]))
+        }, "|".join(ids[i:i + 50]), "leitura")
         entidades.update(corpo.get("entities") or {})
     return entidades
 
