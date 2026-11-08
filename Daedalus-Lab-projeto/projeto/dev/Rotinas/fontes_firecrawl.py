@@ -65,7 +65,7 @@ BLOQUEADOS = [
 ]
 
 # Parâmetros de rastreamento removidos na normalização da URL.
-_PARAMETROS_IGNORADOS = {"fbclid", "gclid", "mc_cid", "mc_eid", "ref", "ref_src"}
+_PARAMETROS_IGNORADOS = {"fbclid", "gclid", "mc_cid", "mc_eid"}
 
 
 def _host(url: str) -> str:
