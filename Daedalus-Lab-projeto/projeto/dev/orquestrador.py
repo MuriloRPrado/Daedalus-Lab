@@ -124,13 +124,14 @@ def rodar_agente(
     args_prompt: tuple = (),
     id_reaproveitado: int | None = None,
     st_andamento: int = STATUS_EM_ANDAMENTO,
-    st_erro: int = STATUS_ERRO,
+    st_erro: int | None = STATUS_ERRO,
     apos_retorno=None,
 ) -> int:
     """
     Executa um agente de ponta a ponta:
     status de andamento -> prompt -> pesquisa -> confere retorno -> status final.
     Qualquer falha grava o status de erro e relança a exceção (a cadeia para).
+    st_erro=None não grava o erro (etapas paralelas: quem grava é rodar_em_paralelo, ao fim de todas).
 
     id_reaproveitado: retorno já gravado em uma execução anterior (retomada); o agente não roda de novo.
     apos_retorno: rotina executada após conferir o retorno e antes do status final.
@@ -160,6 +161,8 @@ def rodar_agente(
 
     except Exception:
         logging.exception("Falha no agente %s do projeto %s", nm_agente, id_proj)
+        if st_erro is None:
+            raise
         try:
             atualizar_status(id_proj, st_erro)
         except Exception:
@@ -172,12 +175,14 @@ def rodar_agente(
 
 
 def rodar_em_paralelo(projeto, *etapas) -> list[int]:
-    """Executa etapas independentes ao mesmo tempo. Se alguma falhar, as demais terminam e o projeto fica com erro."""
+    """
+    Executa etapas independentes ao mesmo tempo. Se alguma falhar, as demais terminam e o projeto fica com erro.
+    As etapas não gravam o status de erro: o projeto só fica disponível para retomada depois que todas terminam.
+    """
     with ThreadPoolExecutor(max_workers=len(etapas)) as executor:
         futuros = [executor.submit(etapa) for etapa in etapas]
     erros = [futuro.exception() for futuro in futuros if futuro.exception() is not None]
     if erros:
-        # Uma etapa concluída depois da falha pode ter sobrescrito o status de erro.
         atualizar_status(projeto.id_projeto, STATUS_ERRO)
         raise erros[0]
     return [futuro.result() for futuro in futuros]
@@ -189,16 +194,20 @@ def rodar_prometeu(projeto, id_reaproveitado: int | None = None) -> int:
         st_final=STATUS_PROMETEU_OK, id_reaproveitado=id_reaproveitado)
 
 
-def rodar_atena(projeto, id_ret_prometeu: int, id_reaproveitado: int | None = None) -> int:
+def rodar_atena(projeto, id_ret_prometeu: int, id_reaproveitado: int | None = None,
+                st_erro: int | None = STATUS_ERRO) -> int:
     return rodar_agente(
         projeto, "Atena", gerar_prompt_atena, executar_pesquisa_atena,
-        st_final=STATUS_ATENA_OK, args_prompt=(id_ret_prometeu,), id_reaproveitado=id_reaproveitado)
+        st_final=STATUS_ATENA_OK, args_prompt=(id_ret_prometeu,), id_reaproveitado=id_reaproveitado,
+        st_erro=st_erro)
 
 
-def rodar_argos(projeto, id_ret_prometeu: int, id_reaproveitado: int | None = None) -> int:
+def rodar_argos(projeto, id_ret_prometeu: int, id_reaproveitado: int | None = None,
+                st_erro: int | None = STATUS_ERRO) -> int:
     return rodar_agente(
         projeto, "Argos", gerar_prompt_argos, executar_pesquisa_argos,
-        st_final=STATUS_ARGOS_OK, args_prompt=(id_ret_prometeu,), id_reaproveitado=id_reaproveitado)
+        st_final=STATUS_ARGOS_OK, args_prompt=(id_ret_prometeu,), id_reaproveitado=id_reaproveitado,
+        st_erro=st_erro)
 
 
 def rodar_temis(projeto, id_ret_prometeu: int, id_ret_atena: int, id_ret_argos: int,
@@ -255,8 +264,8 @@ def iniciar(id_projeto: int | None = None):
     # Atena e Argos dependem só do Prometeu, então rodam ao mesmo tempo.
     id_ret_atena, id_ret_argos = rodar_em_paralelo(
         projeto,
-        lambda: rodar_atena(projeto, id_ret_prometeu, reaproveitar("Atena", id_ret_prometeu)),
-        lambda: rodar_argos(projeto, id_ret_prometeu, reaproveitar("Argos", id_ret_prometeu)),
+        lambda: rodar_atena(projeto, id_ret_prometeu, reaproveitar("Atena", id_ret_prometeu), st_erro=None),
+        lambda: rodar_argos(projeto, id_ret_prometeu, reaproveitar("Argos", id_ret_prometeu), st_erro=None),
     )
     pausa_entre_agentes()
 
