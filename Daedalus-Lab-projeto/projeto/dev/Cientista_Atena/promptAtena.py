@@ -23,7 +23,7 @@ bloco_tres = '''1. Confira a correspondência do projeto e do relatório de Prom
 9. Conclua cada requisito como Atende, Não atende ou Inconclusivo e, em seguida, classifique cada candidato/variante como Atende, Parcial, Inconclusivo ou Não atende, conforme a regra das suas instruções. Não acrescente requisitos eliminatórios não solicitados.
 10. Para cada pendência, especifique o dado/documento necessário e a decisão que poderá mudar.'''
 
-bloco_quatro = '''Produza o relatório no formato das suas instruções, incluindo a tabela "Classificação por material", que será lida por Têmis. Preserve a relação candidato/variante → requisito → evidência e condição → resultado.
+bloco_quatro = '''Produza o relatório no formato das suas instruções, preenchendo a classificação de cada candidato/variante no campo estruturado classificacao_por_material, que forma a tabela "Classificação por material" lida por Têmis. Preserve a relação candidato/variante → requisito → evidência e condição → resultado.
 
 Não emita aprovação química, estrutural ou aeronáutica a partir desse parecer.'''
 

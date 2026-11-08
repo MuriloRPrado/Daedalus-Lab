@@ -1,8 +1,8 @@
-from agents import Agent, Runner
-from Rotinas.cache_fontes import definir_contexto
+from agents import Agent
 from Rotinas.configuracao import carregar_instrucao
+from Rotinas.execucao_agentes import executar_agente
 from Rotinas.ferramentas_agentes import FERRAMENTAS_ARGOS
-from Rotinas.retorno_cientistas import salvar_retorno
+from Rotinas.parecer_estruturado import ParecerArgos
 
 # Limite de turnos (chamadas ao modelo) por execução; o padrão do SDK (10) não comporta a pesquisa completa.
 MAX_TURNOS = 40
@@ -14,10 +14,9 @@ argos = Agent(
     instructions=instrucao,
     model="gpt-6.1-sol",
     tools=FERRAMENTAS_ARGOS,
+    output_type=ParecerArgos,
 )
 
-def executar_pesquisa_argos(id_projeto: int, prompt: str) -> str:
-    definir_contexto(id_projeto, "Argos")
-    retorno = Runner.run_sync(argos, prompt, max_turns=MAX_TURNOS)
-    salvar_retorno(id_projeto, "Argos", retorno.final_output)
-    return "Pesquisa do agente Argos foi concluída"
+def executar_pesquisa_argos(id_projeto: int, prompt: str) -> int:
+    """Executa a pesquisa e devolve o ID do retorno gravado."""
+    return executar_agente(argos, id_projeto, prompt, MAX_TURNOS)

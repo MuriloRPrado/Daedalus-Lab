@@ -1,8 +1,7 @@
-from agents import Agent, Runner
-from Rotinas.cache_fontes import definir_contexto
+from agents import Agent
 from Rotinas.configuracao import carregar_instrucao
+from Rotinas.execucao_agentes import executar_agente
 from Rotinas.ferramentas_agentes import FERRAMENTAS_CALIOPE
-from Rotinas.retorno_cientistas import salvar_retorno
 
 # Limite de turnos (chamadas ao modelo) por execução; o padrão do SDK (10) não comporta a pesquisa completa.
 MAX_TURNOS = 150
@@ -16,8 +15,6 @@ caliope = Agent(
     tools=FERRAMENTAS_CALIOPE,
 )
 
-def executar_pesquisa_caliope(id_projeto: int, prompt: str) -> str:
-    definir_contexto(id_projeto, "Calíope")
-    retorno = Runner.run_sync(caliope, prompt, max_turns=MAX_TURNOS)
-    salvar_retorno(id_projeto, "Calíope", retorno.final_output)
-    return "Pesquisa da agente Calíope foi concluída"
+def executar_pesquisa_caliope(id_projeto: int, prompt: str) -> int:
+    """Executa a pesquisa e devolve o ID do retorno gravado."""
+    return executar_agente(caliope, id_projeto, prompt, MAX_TURNOS)
