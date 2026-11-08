@@ -1,5 +1,5 @@
 ############################## BIBLIOTECAS ##############################
-from sqlalchemy import create_engine, Column, Integer, Numeric, VARCHAR, DATE, Boolean, ForeignKey, Text, TIMESTAMP, func, Float, UniqueConstraint
+from sqlalchemy import create_engine, Column, Integer, Numeric, VARCHAR, DATE, Boolean, ForeignKey, Text, TIMESTAMP, func, Float, UniqueConstraint, CHAR
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
@@ -155,15 +155,15 @@ class EstruturaCristalina(Base):
     ds_grupo_espacial = Column(Text)
     vl_fracao_fase = Column(VARCHAR(255))
     nm_base_fracao = Column(VARCHAR(100))
-    vl_parametro_a_ang = Column(float)
-    vl_parametro_b_ang = Column(float)
-    vl_parametro_c_ang = Column(float)
-    vl_angulo_alfa_graus = Column(float)
-    vl_angulo_beta_graus = Column(float)
-    vl_angulo_gama_graus = Column(float)
-    vl_massa_especifica_kgm3 = Column(float)
-    vl_temperatura_k = Column(float)
-    vl_pressao_pa = Column(float)
+    vl_parametro_a_ang = Column(Float)
+    vl_parametro_b_ang = Column(Float)
+    vl_parametro_c_ang = Column(Float)
+    vl_angulo_alfa_graus = Column(Float)
+    vl_angulo_beta_graus = Column(Float)
+    vl_angulo_gama_graus = Column(Float)
+    vl_massa_especifica_kgm3 = Column(Float)
+    vl_temperatura_k = Column(Float)
+    vl_pressao_pa = Column(Float)
 
 '''Tabela que armazena as fontes vinculadas as composições dos materiais'''
 class ComposicaoFonte(Base):
@@ -208,9 +208,9 @@ class ValorPropriedades(Base):
     id_vl_prop = Column(Integer, primary_key=True)
     id_propriedade = Column(Integer, ForeignKey("propriedades_materiais.id_propriedade"))
     id_mat_estado = Column(Integer, ForeignKey("materiais_estado.id_mat_estado"))
-    vl_prop = Column(float)
-    vl_min_prop = Column(float)
-    vl_max_prop = Column(float)
+    vl_prop = Column(Float)
+    vl_min_prop = Column(Float)
+    vl_max_prop = Column(Float)
     tp_valor = Column(VARCHAR(150))
 
 '''Tabela que armazena as fontes dos valores de propriedades'''
@@ -239,3 +239,38 @@ class Fontes(Base):
     nm_caminho_arquivo = Column(Text)
     ds_observacoes = Column(Text)
     dt_criacao = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+class FonteConsultada(Base):
+    __tablename__ = 'fonte_consultada'
+
+    id_fonte = Column(Integer, primary_key=True)
+    ds_url = Column(Text, nullable=False)
+    ds_url_normalizada = Column(Text, nullable=False, unique=True)
+    nm_dominio = Column(VARCHAR(255), nullable=False)
+    tp_conteudo = Column(VARCHAR(10), nullable=False)
+    tp_nivel_fonte = Column(VARCHAR(30))
+    ds_titulo = Column(Text)
+    ds_conteudo = Column(Text)
+    nr_paginas_pdf = Column(Integer)
+    nr_paginas_lidas = Column(Integer)
+    fl_pdf_truncado = Column(Boolean, server_default='false')
+    cd_http_status = Column(Integer)
+    ds_hash_conteudo = Column(CHAR(64))
+    ds_doi = Column(VARCHAR(255))
+    dt_consulta = Column(TIMESTAMP(timezone=True), server_default=func.now())
+    dt_expiracao = Column(TIMESTAMP(timezone=True))
+
+class LogConsultaExterna(Base):
+    __tablename__ = 'log_consulta_externa'
+
+    id_log = Column(Integer, primary_key=True)
+    id_projeto = Column(Integer, ForeignKey("projeto.id_projeto"))
+    nm_agente = Column(VARCHAR(100))
+    nm_servico = Column(VARCHAR(30), nullable=False)
+    tp_operacao = Column(VARCHAR(30), nullable=False)
+    ds_consulta = Column(Text)
+    id_fonte = Column(Integer, ForeignKey("fonte_consultada.id_fonte"))
+    fl_cache = Column(Boolean, server_default='false')
+    vl_creditos = Column(Integer, server_default='0')
+    ds_erro = Column(Text)
+    dt_consulta = Column(TIMESTAMP(timezone=True), server_default=func.now())
