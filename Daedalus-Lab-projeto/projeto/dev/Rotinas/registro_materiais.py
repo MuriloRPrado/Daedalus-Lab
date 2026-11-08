@@ -12,7 +12,7 @@ ma_fontes, me_fontes, cm_fontes, vlp_fontes e fec_fontes.
 import re
 from datetime import date
 
-from sqlalchemy import func, or_, select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from database import (
@@ -143,20 +143,25 @@ def registrar_fonte(
         cd_doi = _normalizar_doi(cd_doi)
     if nm_url:
         nm_url = normalizar_url(nm_url)
-    if cd_doi or nm_url:
-        condicoes = []
-        if cd_doi:
-            condicoes.append(func.lower(Fontes.cd_doi) == cd_doi)
-        if nm_url:
-            condicoes.append(Fontes.nm_url == nm_url)
-        filtro = or_(*condicoes)
-    else:
-        filtro = (func.lower(Fontes.tp_fonte) == tp_fonte.lower()) & (func.lower(Fontes.nm_titulo) == nm_titulo.lower())
+    # Ordem de prioridade: DOI, depois URL; sem ambos, tipo + título.
+    filtros = []
+    if cd_doi:
+        filtros.append(func.lower(Fontes.cd_doi) == cd_doi)
+    if nm_url:
+        filtros.append(Fontes.nm_url == nm_url)
+    if not filtros:
+        filtros.append((func.lower(Fontes.tp_fonte) == tp_fonte.lower()) & (func.lower(Fontes.nm_titulo) == nm_titulo.lower()))
 
     with Session(engine) as session:
         with session.begin():
             session.execute(text("SELECT pg_advisory_xact_lock(:chave)"), {"chave": 0})
-            existente = session.execute(select(Fontes.id_fonte).where(filtro).limit(1)).scalar()
+            existente = None
+            for filtro in filtros:
+                existente = session.execute(
+                    select(Fontes.id_fonte).where(filtro).order_by(Fontes.id_fonte).limit(1)
+                ).scalar()
+                if existente is not None:
+                    break
             if existente is not None:
                 return {"id_fonte": existente, "criado": False, "aviso": "Fonte já registrada; use este id_fonte."}
             fonte = Fontes(
