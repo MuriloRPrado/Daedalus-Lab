@@ -18,6 +18,7 @@ import html
 import json
 import re
 from datetime import datetime, timezone
+from itertools import zip_longest
 
 import requests
 
@@ -154,20 +155,22 @@ def buscar_material_wikidata(nome: str, idioma: str = "pt", limite: int = 5) -> 
     nome, idioma = _texto(nome, "nome"), _idioma(idioma)
     if not 1 <= limite <= 20:
         raise ValueError("limite deve estar entre 1 e 20.")
-    itens: dict[str, dict] = {}
+    por_lingua: list[list[dict]] = []
     for lingua in dict.fromkeys([idioma, "en"]):
         corpo = _api("wikidata", URL_WIKIDATA, {
             "action": "wbsearchentities", "search": nome, "language": lingua, "uselang": idioma,
             "type": "item", "limit": limite,
         }, nome)
-        for r in corpo.get("search") or []:
-            itens.setdefault(r["id"], {
-                "id": r["id"],
-                "rotulo": r.get("label"),
-                "descricao": r.get("description"),
-                "url": f"https://www.wikidata.org/wiki/{r['id']}",
-                "tipo_acesso": "resultado_de_busca",
-            })
+        por_lingua.append(corpo.get("search") or [])
+    itens: dict[str, dict] = {}
+    for r in (r for grupo in zip_longest(*por_lingua) for r in grupo if r):
+        itens.setdefault(r["id"], {
+            "id": r["id"],
+            "rotulo": r.get("label"),
+            "descricao": r.get("description"),
+            "url": f"https://www.wikidata.org/wiki/{r['id']}",
+            "tipo_acesso": "resultado_de_busca",
+        })
     return _retorno("Wikidata", nome, list(itens.values())[:limite], idioma=idioma, limite=limite)
 
 
