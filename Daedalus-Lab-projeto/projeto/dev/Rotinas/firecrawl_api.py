@@ -273,10 +273,6 @@ def ler_documento(url: str, *, max_paginas_pdf: int = 10, inicio: int = 0, max_c
     metadados = dados_api.get("metadata") or {}
     conteudo = dados_api.get("markdown") or ""
     url_final = metadados.get("url") or url
-    if dominio_bloqueado(url_final):
-        mensagem = f"A URL redirecionou para uma fonte bloqueada: {obter_dominio(url_final)}. Procure outra fonte."
-        registrar_consulta(SERVICO, "leitura", url, vl_creditos=int(metadados.get("creditsUsed") or 1), ds_erro=mensagem)
-        raise ValueError(mensagem)
     eh_pdf = "pdf" in str(metadados.get("contentType") or "").lower() or metadados.get("numPages") is not None
     paginas_lidas = metadados.get("numPages") if eh_pdf else None
     paginas_total = metadados.get("totalPages") if eh_pdf else None
@@ -287,6 +283,10 @@ def ler_documento(url: str, *, max_paginas_pdf: int = 10, inicio: int = 0, max_c
     creditos = metadados.get("creditsUsed")
     if creditos is None:
         creditos = max(1, paginas_lidas or 1)
+    if dominio_bloqueado(url_final):
+        mensagem = f"A URL redirecionou para uma fonte bloqueada: {obter_dominio(url_final)}. Procure outra fonte."
+        registrar_consulta(SERVICO, "leitura", url, vl_creditos=int(creditos), ds_erro=mensagem)
+        raise ValueError(mensagem)
     titulo = metadados.get("title") or metadados.get("ogTitle")
     if isinstance(titulo, list):
         titulo = titulo[0] if titulo else None
