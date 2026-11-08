@@ -12,7 +12,7 @@ ma_fontes, me_fontes, cm_fontes, vlp_fontes e fec_fontes.
 import re
 from datetime import date
 
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text
 from sqlalchemy.orm import Session
 
 from database import (
@@ -100,8 +100,8 @@ def registrar_fonte(
 ) -> dict:
     """Registra uma fonte na tabela "fontes" e devolve o id_fonte. Se a fonte já existir, devolve o id existente.
 
-    A fonte é considerada a mesma quando tem o mesmo DOI; sem DOI, a mesma URL; sem DOI e
-    sem URL, o mesmo tipo e título. Use o id_fonte devolvido em ids_fontes das demais funções.
+    A fonte é considerada a mesma quando tem o mesmo DOI ou a mesma URL; sem DOI e sem URL,
+    o mesmo tipo e título. Use o id_fonte devolvido em ids_fontes das demais funções.
 
     Args:
         tp_fonte: Tipo da fonte (ex.: "Ficha técnica", "Artigo científico", "Norma", "Base de dados calculados").
@@ -132,10 +132,15 @@ def registrar_fonte(
 
     if cd_doi:
         cd_doi = _normalizar_doi(cd_doi)
-        filtro = func.lower(Fontes.cd_doi) == cd_doi
-    elif nm_url:
+    if nm_url:
         nm_url = normalizar_url(nm_url)
-        filtro = Fontes.nm_url == nm_url
+    if cd_doi or nm_url:
+        condicoes = []
+        if cd_doi:
+            condicoes.append(func.lower(Fontes.cd_doi) == cd_doi)
+        if nm_url:
+            condicoes.append(Fontes.nm_url == nm_url)
+        filtro = or_(*condicoes)
     else:
         filtro = (func.lower(Fontes.tp_fonte) == tp_fonte.lower()) & (func.lower(Fontes.nm_titulo) == nm_titulo.lower())
 
