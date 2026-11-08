@@ -1,12 +1,12 @@
 ######################### BIBLIOTECAS ###################################
 from database import engine, RetornoCientista
-from pathlib import Path
+from Rotinas.configuracao import PASTA_RETORNOS
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 #########################################################################
 
 # Caminho da pasta onde o arquivo será armazenado
-pasta = Path(r"C:\Users\Usuário\Desktop\Portfólio\Daedalus-Lab\Arquivos\Retornos")
+pasta = PASTA_RETORNOS
 
 '''Função para consultar se há retorno dentro da tabela de retornos dos cientistas'''
 def gerar_arquivo_retorno_cientistas(id_pesquisa: int, id_projeto: int, nm_agente: str):
@@ -21,6 +21,7 @@ def gerar_arquivo_retorno_cientistas(id_pesquisa: int, id_projeto: int, nm_agent
         resultado = session.execute(retorno).one_or_none()                                              # Retorna a consulta
 
     if resultado is not None:
+        pasta.mkdir(parents=True, exist_ok=True)
         arquivo = pasta / f"pesquisa_{resultado.nm_agente}_IDProjeto{resultado.id_projeto}_IDPesquisa{resultado.id_ret_cientistas}.md"          # Cria o arquivo com o seguinte formato: pesquisa_NmAgente_idProjetoNr_id.md
 
         with arquivo.open("w", encoding="utf-8") as f:

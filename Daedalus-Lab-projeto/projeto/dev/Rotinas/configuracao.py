@@ -12,6 +12,9 @@ from pathlib import Path
 
 _PASTA_DEV = Path(__file__).resolve().parents[1]
 ARQUIVOS_ENV = [_PASTA_DEV / ".env", _PASTA_DEV.parent / "container" / "env"]
+PASTA_ARQUIVOS = _PASTA_DEV.parents[1] / "Arquivos"
+PASTA_INSTRUCOES = PASTA_ARQUIVOS / "Instrução"
+PASTA_RETORNOS = PASTA_ARQUIVOS / "Retornos"
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,11 @@ def user_agent() -> str:
     email = os.getenv("DAEDALUS_EMAIL_CONTATO", "").strip()
     contato = f"; {email}" if email else ""
     return f"DaedalusLab/1.0 (+https://github.com/MuriloRPrado/Daedalus-Lab{contato})"
+
+
+def carregar_instrucao(nome_arquivo: str) -> str:
+    """Lê o arquivo de instrução do agente em Arquivos/Instrução."""
+    return (PASTA_INSTRUCOES / nome_arquivo).read_text(encoding="utf-8")
 
 
 carregar_variaveis()

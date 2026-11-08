@@ -219,3 +219,6 @@ __marimo__/
 .streamlit/secrets.toml
 
 **/container/env
+
+# Retornos dos agentes exportados em tempo de execução
+Daedalus-Lab-projeto/Arquivos/Retornos/

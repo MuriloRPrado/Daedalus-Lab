@@ -17,6 +17,9 @@ from Cientista_Atena.agenteAtena import executar_pesquisa_atena
 from Cientista_Argos.promptArgos import gerar_prompt_argos
 from Cientista_Argos.agenteArgos import executar_pesquisa_argos
 
+from Cientista_Temis.promptTemis import gerar_prompt_temis
+from Cientista_Temis.agenteTemis import executar_pesquisa_temis
+
 from Cientista_Caliope.promptCaliope import gerar_prompt_caliope
 from Cientista_Caliope.agenteCaliope import executar_pesquisa_caliope
 #########################################################################
@@ -30,17 +33,17 @@ STATUS_EM_ANDAMENTO = 21
 STATUS_PROMETEU_OK = 23
 STATUS_ATENA_OK = 25
 STATUS_ARGOS_OK = 24   # atenção: menor que o da Atena, confirme se é intencional
+STATUS_TEMIS_OK = 28
 STATUS_FINAL_OK = 12   # ajuste para o código de "pesquisa concluída" que você usa
 
 SEGUNDOS_ENTRE_AGENTES = 5
 
 colunas = (
     Projeto.id_projeto,
-    Projeto.nm_responsavel_tecnico,
+    Projeto.nm_usuario_solicitante,
     Projeto.nm_tp_sigla,
     Projeto.ds_aplicacao,
     Projeto.ds_ambiente,
-    Projeto.nm_componente,
     Projeto.nm_material_ref,
     Projeto.ds_rota_fabricacao,
     Projeto.ds_disponibilidade,
@@ -164,13 +167,20 @@ def rodar_argos(projeto, id_ret_prometeu: int) -> int:
         st_final=STATUS_ARGOS_OK, args_prompt=(id_ret_prometeu,))
 
 
-def rodar_caliope(projeto, id_ret_prometeu: int, id_ret_atena: int, id_ret_argos: int) -> int:
+def rodar_temis(projeto, id_ret_prometeu: int, id_ret_atena: int, id_ret_argos: int) -> int:
+    return rodar_agente(
+        projeto, "Têmis", gerar_prompt_temis, executar_pesquisa_temis,
+        st_final=STATUS_TEMIS_OK,
+        args_prompt=(id_ret_prometeu, id_ret_atena, id_ret_argos))
+
+
+def rodar_caliope(projeto, id_ret_prometeu: int, id_ret_atena: int, id_ret_argos: int, id_ret_temis: int) -> int:
     return rodar_agente(
         projeto, "Calíope", gerar_prompt_caliope, executar_pesquisa_caliope,
         st_final=STATUS_FINAL_OK,
-        args_prompt=(id_ret_prometeu, id_ret_atena, id_ret_argos),
+        args_prompt=(id_ret_temis,),
         apos_retorno=lambda: marcar_retornos_utilizados_caliope(
-            projeto.id_projeto, id_ret_prometeu, id_ret_atena, id_ret_argos))
+            projeto.id_projeto, id_ret_prometeu, id_ret_atena, id_ret_argos, id_ret_temis))
 
 
 def pausa_entre_agentes():
@@ -199,7 +209,10 @@ def iniciar(id_projeto: int | None = None):
     id_ret_argos = rodar_argos(projeto, id_ret_prometeu)
     pausa_entre_agentes()
 
-    id_ret_final = rodar_caliope(projeto, id_ret_prometeu, id_ret_atena, id_ret_argos)
+    id_ret_temis = rodar_temis(projeto, id_ret_prometeu, id_ret_atena, id_ret_argos)
+    pausa_entre_agentes()
+
+    id_ret_final = rodar_caliope(projeto, id_ret_prometeu, id_ret_atena, id_ret_argos, id_ret_temis)
 
     return projeto.id_projeto, id_ret_final
 
