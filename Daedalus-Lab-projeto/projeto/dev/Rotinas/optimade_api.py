@@ -67,7 +67,10 @@ def formula_reduzida(formula: str) -> str:
     contagem: dict[str, int] = {}
     for elemento, numero in partes:
         _validar_elementos([elemento])
-        contagem[elemento] = contagem.get(elemento, 0) + int(numero or 1)
+        quantidade = int(numero or 1)
+        if quantidade <= 0:
+            raise ValueError(f"Fórmula inválida: {formula}. A quantidade de cada elemento deve ser maior que zero.")
+        contagem[elemento] = contagem.get(elemento, 0) + quantidade
     divisor = reduce(math.gcd, contagem.values())
     return "".join(f"{e}{n // divisor if n // divisor > 1 else ''}" for e, n in sorted(contagem.items()))
 
@@ -124,32 +127,59 @@ def _requisitar_estruturas(chave_base: str, filtro: str, limite: int) -> dict:
     return resposta.json()
 
 
+def _proxima_pagina(corpo: dict) -> str | None:
+    proxima = (corpo.get("links") or {}).get("next")
+    return proxima.get("href") if isinstance(proxima, dict) else proxima
+
+
+def _buscar_com_filtro_local(chave_base: str, filtro: str, limite: int, formula: str) -> tuple[list[dict], bool]:
+    """Percorre até _MAX_PAGINAS_FILTRO_LOCAL páginas filtrando a fórmula aqui; devolve (itens, busca_incompleta)."""
+    corpo = _requisitar_estruturas(chave_base, filtro, 50)
+    encontrados = []
+    for pagina in range(_MAX_PAGINAS_FILTRO_LOCAL):
+        encontrados += [i for i in corpo.get("data") or [] if _mesma_formula(i.get("attributes") or {}, formula)]
+        proxima = _proxima_pagina(corpo)
+        if len(encontrados) >= limite or not proxima:
+            return encontrados, False
+        if pagina == _MAX_PAGINAS_FILTRO_LOCAL - 1:
+            return encontrados, True
+        resposta = requests.get(proxima, timeout=45)
+        resposta.raise_for_status()
+        corpo = resposta.json()
+    return encontrados, True
+
+
 def _consultar_base(chave_base: str, filtro: str, limite: int, formula: str | None) -> dict:
     filtro_completo = filtro + (f' AND chemical_formula_reduced="{formula}"' if formula else "")
-    filtrar_localmente = False
+    filtrado_localmente = busca_incompleta = False
     try:
         try:
             corpo = _requisitar_estruturas(chave_base, filtro_completo, limite)
+            itens = corpo.get("data") or []
+            total = (corpo.get("meta") or {}).get("data_returned")
         except requests.HTTPError as erro:
             # Algumas bases (ex.: COD, AFLOW) não aceitam filtro por fórmula: filtra aqui.
             if not formula or erro.response is None or erro.response.status_code not in (400, 501):
                 raise
-            corpo = _requisitar_estruturas(chave_base, filtro, 50)
-            filtrar_localmente = True
+            itens, busca_incompleta = _buscar_com_filtro_local(chave_base, filtro, limite, formula)
+            total, filtrado_localmente = None, True
     except (requests.RequestException, ValueError) as erro:
         registrar_consulta(f"optimade:{chave_base}", "busca", filtro_completo, ds_erro=str(erro)[:500])
         return {"base": chave_base, "erro": f"Base indisponível ou consulta recusada: {erro}"[:300], "estruturas": []}
     registrar_consulta(f"optimade:{chave_base}", "busca", filtro_completo)
-    itens = corpo.get("data") or []
-    total = (corpo.get("meta") or {}).get("data_returned")
-    if filtrar_localmente:
-        itens = [i for i in itens if _mesma_formula(i.get("attributes") or {}, formula)]
-        total = None
-    return {
+    retorno = {
         "base": chave_base,
         "total_na_base": total,
         "estruturas": [_resumo_estrutura(chave_base, i) for i in itens[:limite]],
     }
+    if busca_incompleta:
+        retorno["observacao"] = (
+            f"A base não aceita filtro por fórmula; só as primeiras {_MAX_PAGINAS_FILTRO_LOCAL} páginas "
+            "de resultados foram verificadas e pode haver outras estruturas com essa fórmula."
+        )
+    elif filtrado_localmente:
+        retorno["observacao"] = "A base não aceita filtro por fórmula; o filtro foi aplicado localmente."
+    return retorno
 
 
 def _retorno(consulta: str, dados, **parametros) -> dict:
