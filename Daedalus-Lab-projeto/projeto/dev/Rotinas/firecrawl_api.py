@@ -25,6 +25,7 @@ from datetime import datetime, timezone
 
 import requests
 
+import Rotinas.configuracao  # noqa: F401
 from Rotinas.cache_fontes import buscar_fonte, contexto_atual, creditos_utilizados, registrar_consulta, salvar_fonte
 from Rotinas.fontes_firecrawl import (
     classificar_fonte,
