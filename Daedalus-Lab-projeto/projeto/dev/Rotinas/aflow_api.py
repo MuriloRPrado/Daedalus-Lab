@@ -62,7 +62,7 @@ def _material(item: dict) -> dict:
         "simbolo_pearson": item.get("Pearson_symbol_relax"),
         "propriedades": propriedades,
         "url_registro": f"https://aflow.org/material/?id={item.get('auid')}",
-        "url_dados": "http://" + aurl.replace(":", "/", 1) + "/" if aurl else None,
+        "url_dados": "https://" + aurl.replace(":", "/", 1) + "/" if aurl else None,
         "tipo_dado": "calculado",
     }
 
