@@ -28,15 +28,13 @@ from Cientista_Caliope.agenteCaliope import executar_pesquisa_caliope
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
-# Status usados (confira se estão como você deseja)
+# Códigos da tabela status
 STATUS_AGUARDANDO = 10
 STATUS_ERRO = 11
 STATUS_EM_ANDAMENTO = 21
 STATUS_PROMETEU_OK = 23
-STATUS_ATENA_OK = 25
-STATUS_ARGOS_OK = 24   # atenção: menor que o da Atena, confirme se é intencional
 STATUS_TEMIS_OK = 28
-STATUS_FINAL_OK = 12   # ajuste para o código de "pesquisa concluída" que você usa
+STATUS_FINAL_OK = 12
 
 SEGUNDOS_ENTRE_AGENTES = 5
 
@@ -120,7 +118,7 @@ def rodar_agente(
     nm_agente: str,
     gerar_prompt,
     executar,
-    st_final: int,
+    st_final: int | None,
     args_prompt: tuple = (),
     id_reaproveitado: int | None = None,
     st_andamento: int = STATUS_EM_ANDAMENTO,
@@ -132,6 +130,7 @@ def rodar_agente(
     status de andamento -> prompt -> pesquisa -> confere retorno -> status final.
     Qualquer falha grava o status de erro e relança a exceção (a cadeia para).
     st_erro=None não grava o erro (etapas paralelas: quem grava é rodar_em_paralelo, ao fim de todas).
+    st_final=None não grava o status final (etapas paralelas: o projeto segue em andamento até a próxima etapa).
 
     id_reaproveitado: retorno já gravado em uma execução anterior (retomada); o agente não roda de novo.
     apos_retorno: rotina executada após conferir o retorno e antes do status final.
@@ -169,7 +168,8 @@ def rodar_agente(
             logging.exception("Não foi possível gravar o status de erro do projeto %s", id_proj)
         raise
 
-    atualizar_status(id_proj, st_final)
+    if st_final is not None:
+        atualizar_status(id_proj, st_final)
     print(f"Pesquisa finalizada pelo agente {nm_agente}")
     return id_retorno
 
@@ -198,7 +198,7 @@ def rodar_atena(projeto, id_ret_prometeu: int, id_reaproveitado: int | None = No
                 st_erro: int | None = STATUS_ERRO) -> int:
     return rodar_agente(
         projeto, "Atena", gerar_prompt_atena, executar_pesquisa_atena,
-        st_final=STATUS_ATENA_OK, args_prompt=(id_ret_prometeu,), id_reaproveitado=id_reaproveitado,
+        st_final=None, args_prompt=(id_ret_prometeu,), id_reaproveitado=id_reaproveitado,
         st_erro=st_erro)
 
 
@@ -206,7 +206,7 @@ def rodar_argos(projeto, id_ret_prometeu: int, id_reaproveitado: int | None = No
                 st_erro: int | None = STATUS_ERRO) -> int:
     return rodar_agente(
         projeto, "Argos", gerar_prompt_argos, executar_pesquisa_argos,
-        st_final=STATUS_ARGOS_OK, args_prompt=(id_ret_prometeu,), id_reaproveitado=id_reaproveitado,
+        st_final=None, args_prompt=(id_ret_prometeu,), id_reaproveitado=id_reaproveitado,
         st_erro=st_erro)
 
 

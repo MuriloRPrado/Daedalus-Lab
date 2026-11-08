@@ -3,8 +3,14 @@ from sqlalchemy import create_engine, Column, Integer, Numeric, VARCHAR, DATE, B
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
+import Rotinas.configuracao  # noqa: F401  (carrega .env)
+
 ############################## CONEXÃO COM O BANCO DE DADOS ##############################
-engine = create_engine(os.getenv("DATABASE_URL", "postgresql+pg8000://euProjetoDaedalus:senhaTeste@localhost:5432/dedalos"))
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("A variável DATABASE_URL não foi configurada (veja projeto/dev/.env.exemplo).")
+
+engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()

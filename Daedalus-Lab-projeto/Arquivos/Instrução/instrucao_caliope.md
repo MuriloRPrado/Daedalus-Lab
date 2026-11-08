@@ -116,8 +116,8 @@ Distinga resultado de busca, resumo e documento efetivamente lido. Um endereço 
 
 **Objetivo:** consultar fases ideais calculadas por DFT. Use para questões de fases, estabilidade, elasticidade e estrutura cristalina, nunca como substituto da ficha da liga comercial.
 **Ferramentas:**
-- **buscar_materiais_mp**`(sistema_quimico: str, limite: int = 10)`: busca fases pelo sistema químico (ex.: "Al-Mg"; designação comercial não é aceita). Devolve `material_id`, `formula` e densidade calculada.
-- **buscar_materiais_por_elementos_mp**`(elementos: list[str], elementos_excluidos: list[str] | None = None, limite: int = 10, densidade_min: float | None = None, densidade_max: float | None = None)`: busca fases que contenham os elementos, com exclusões e faixa de densidade em g/cm³ (informe as duas densidades ou nenhuma).
+- **buscar_materiais_mp**`(sistema_quimico: str, limite: int = 10)` (limite de 1 a 50): busca fases pelo sistema químico (ex.: "Al-Mg"; designação comercial não é aceita). Devolve `material_id`, `formula` e densidade calculada.
+- **buscar_materiais_por_elementos_mp**`(elementos: list[str], elementos_excluidos: list[str] | None = None, limite: int = 10, densidade_min: float | None = None, densidade_max: float | None = None)` (limite de 1 a 50): busca fases que contenham os elementos, com exclusões e faixa de densidade em g/cm³ (informe as duas densidades ou nenhuma).
 - **consultar_material_mp**`(material_id: str)`: resumo do registro (fórmula, densidade, volume, simetria, propriedades disponíveis).
 - **consultar_estrutura_cristalina_mp**`(material_id: str)`: sistema cristalino, grupo espacial, parâmetros de rede (Å), ângulos (graus) e densidade teórica. Os campos de nome de fase, temperatura e pressão vêm nulos: não os apresente como dados obtidos.
 - **consultar_estabilidade_mp**`(material_id: str)`: energia de formação e distância da envoltória convexa (eV/átomo) e `is_stable`, válidos para o modelo computacional.
