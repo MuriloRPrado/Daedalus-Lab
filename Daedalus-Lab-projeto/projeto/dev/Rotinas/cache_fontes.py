@@ -78,6 +78,7 @@ def buscar_fonte(ds_url_normalizada: str) -> dict | None:
     fonte = _cache_memoria.get(ds_url_normalizada)
     if fonte and fonte["dt_expiracao"] > datetime.now(timezone.utc):
         return dict(fonte)
+    _cache_memoria.pop(ds_url_normalizada, None)
     return None
 
 
@@ -147,7 +148,10 @@ def salvar_fonte(
         parametros,
         buscar="valor",
     )
-    _cache_memoria[ds_url_normalizada] = {**parametros, "id_fonte": id_fonte}
+    if id_fonte is None:
+        _cache_memoria[ds_url_normalizada] = {**parametros, "id_fonte": None}
+    else:
+        _cache_memoria.pop(ds_url_normalizada, None)
     return id_fonte
 
 
