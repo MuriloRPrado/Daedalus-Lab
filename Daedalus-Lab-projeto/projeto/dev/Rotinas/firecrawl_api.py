@@ -255,7 +255,7 @@ def ler_documento(url: str, *, max_paginas_pdf: int = 10, inicio: int = 0, max_c
                                veio_do_cache=True, nivel_fonte=nivel_fonte, creditos=0)
         return _retorno(url, parametros, dados)
 
-    _verificar_limite(max_paginas_pdf if url_normalizada.lower().endswith(".pdf") else 1)
+    _verificar_limite(max_paginas_pdf)
     corpo = {
         "url": url,
         "formats": ["markdown"],
