@@ -7,6 +7,7 @@ Ordem de leitura (a primeira definição vence; variáveis já definidas no sist
 Instalação: python -m pip install python-dotenv
 """
 import logging
+import os
 from pathlib import Path
 
 _PASTA_DEV = Path(__file__).resolve().parents[1]
@@ -28,6 +29,13 @@ def carregar_variaveis() -> list[str]:
             load_dotenv(arquivo, override=False)
             lidos.append(str(arquivo))
     return lidos
+
+
+def user_agent() -> str:
+    """Identificação enviada às APIs públicas (Wikimedia, AFLOW, OQMD), com o e-mail de contato se houver."""
+    email = os.getenv("DAEDALUS_EMAIL_CONTATO", "").strip()
+    contato = f"; {email}" if email else ""
+    return f"DaedalusLab/1.0 (+https://github.com/MuriloRPrado/Daedalus-Lab{contato})"
 
 
 carregar_variaveis()
