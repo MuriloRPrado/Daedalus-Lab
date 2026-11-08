@@ -20,7 +20,9 @@ import argparse
 import hashlib
 import json
 import os
+import threading
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 import requests
@@ -58,17 +60,36 @@ def _limitar(valor: int, minimo: int, maximo: int) -> int:
     return max(minimo, min(int(valor), maximo))
 
 
-def _verificar_limite(creditos_previstos: int) -> None:
+_trava_creditos = threading.Lock()
+_creditos_reservados: dict[int, int] = {}
+
+
+@contextmanager
+def _reserva_creditos(creditos_previstos: int):
+    """Confere o limite do projeto e reserva os créditos previstos até a consulta ser registrada no log.
+
+    A reserva evita que chamadas simultâneas (ex.: Atena e Argos em paralelo) passem juntas
+    pela conferência com o mesmo saldo e ultrapassem o limite.
+    """
     limite = os.getenv("FIRECRAWL_LIMITE_CREDITOS_PROJETO", "").strip()
     id_projeto, _ = contexto_atual()
     if not limite or id_projeto is None:
+        yield
         return
-    usados = creditos_utilizados(id_projeto)
-    if usados is not None and usados + creditos_previstos > int(limite):
-        raise ErroFirecrawl(
-            f"Limite de créditos do projeto atingido ({usados}/{limite}). "
-            "Use as fontes já lidas (ler_pagina usa o cache sem custo)."
-        )
+    with _trava_creditos:
+        usados = creditos_utilizados(id_projeto)
+        reservados = _creditos_reservados.get(id_projeto, 0)
+        if usados is not None and usados + reservados + creditos_previstos > int(limite):
+            raise ErroFirecrawl(
+                f"Limite de créditos do projeto atingido ({usados + reservados}/{limite}). "
+                "Use as fontes já lidas (ler_pagina usa o cache sem custo)."
+            )
+        _creditos_reservados[id_projeto] = reservados + creditos_previstos
+    try:
+        yield
+    finally:
+        with _trava_creditos:
+            _creditos_reservados[id_projeto] -= creditos_previstos
 
 
 def _requisitar(caminho: str, corpo: dict, *, timeout: int = 120) -> dict:
@@ -119,14 +140,14 @@ def _buscar(consulta: str, parametros: dict, *, tipo: str, dominios: list[str] |
     else:
         corpo["excludeDomains"] = dominios_bloqueados_busca()
 
-    _verificar_limite(2 * ((limite + 9) // 10))
-    try:
-        resposta = _requisitar("/search", corpo)
-    except ErroFirecrawl as erro:
-        registrar_consulta(SERVICO, "busca", consulta, ds_erro=str(erro))
-        raise
-    creditos = int(resposta.get("creditsUsed") or 0)
-    registrar_consulta(SERVICO, "busca", consulta, vl_creditos=creditos)
+    with _reserva_creditos(2 * ((limite + 9) // 10)):
+        try:
+            resposta = _requisitar("/search", corpo)
+        except ErroFirecrawl as erro:
+            registrar_consulta(SERVICO, "busca", consulta, ds_erro=str(erro))
+            raise
+        creditos = int(resposta.get("creditsUsed") or 0)
+        registrar_consulta(SERVICO, "busca", consulta, vl_creditos=creditos)
 
     resultados, removidos = [], 0
     for item in (resposta.get("data") or {}).get("web") or []:
@@ -256,7 +277,14 @@ def ler_documento(url: str, *, max_paginas_pdf: int = 10, inicio: int = 0, max_c
                                veio_do_cache=True, nivel_fonte=nivel_fonte, creditos=0)
         return _retorno(url, parametros, dados)
 
-    _verificar_limite(max_paginas_pdf)
+    with _reserva_creditos(max_paginas_pdf):
+        return _ler_pela_api(url, url_normalizada, parametros, max_paginas_pdf=max_paginas_pdf, inicio=inicio,
+                             max_caracteres=max_caracteres, doi=doi, nivel_fonte=nivel_fonte)
+
+
+def _ler_pela_api(url: str, url_normalizada: str, parametros: dict, *, max_paginas_pdf: int, inicio: int,
+                  max_caracteres: int, doi: str | None, nivel_fonte: str | None) -> dict:
+    """Lê a URL pelo Firecrawl, grava no cache e registra a consulta. Chamada dentro da reserva de créditos."""
     corpo = {
         "url": url,
         "formats": ["markdown"],

@@ -189,6 +189,8 @@ Essa classificação será lida por **Têmis**, que a combinará com o parecer d
 
 Sempre siga este formato de resposta e responda em português brasileiro, em Markdown, nesta ordem:
 
+A resposta é entregue em campos estruturados: `secao_decisao_resumida` traz a seção 1 em Markdown; `classificacao_por_material` traz a seção 2, com uma entrada por candidato/variante (o sistema monta a tabela a partir dela; não a repita no Markdown); `secoes_seguintes` traz as seções 3 a 6 em Markdown, com os títulos. Se não houver restrições químicas registrados no projeto, use `sem_criterios` = true e deixe `classificacao_por_material` vazia.
+
 ### 1. Decisão química resumida
 | ID do candidato | Designação/variante | Resultado químico | Alcance da evidência | Pendência decisiva |
 |---|---|---|---|---|
@@ -200,7 +202,7 @@ Comece pelo atendimento demonstrado e informe os totais por resultado. Separe bl
 |---|---|---|---|---|---|---|
 - Uma linha por candidato e por variante avaliados, com os IDs recebidos de Prometeu (ou os locais, com a correspondência).
 - Preencha a coluna "Classificação" somente com Atende, Parcial, Inconclusivo ou Não atende, conforme o tópico 6.
-- Se não houver restrições químicas registrados no projeto, escreva uma única linha informando "Sem restrições químicas registrados" e não classifique os candidatos.
+- Se não houver restrições químicas registrados no projeto, informe `sem_criterios` = true (o sistema escreve "Sem restrições químicas registradas") e não classifique os candidatos.
 
 ### 3. Restrições e interpretações
 | ID original/local | Elemento | Tipo | Operador/limite | Unidade/base | Obrigatoriedade | Prioridade | Ambiguidade |

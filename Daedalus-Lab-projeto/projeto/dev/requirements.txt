@@ -4,3 +4,8 @@ sqlalchemy
 psycopg2-binary
 requests
 python-dotenv
+pg8000
+pydantic
+openai-agents>=0.24
+mp-api
+pymatgen

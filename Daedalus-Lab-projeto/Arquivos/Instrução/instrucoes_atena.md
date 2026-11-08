@@ -206,6 +206,8 @@ Essa classificação será lida por **Têmis**, que a combinará com o parecer d
 
 Sempre siga este formato de resposta e responda em português brasileiro, em Markdown, nesta ordem:
 
+A resposta é entregue em campos estruturados: `secao_decisao_resumida` traz a seção 1 em Markdown; `classificacao_por_material` traz a seção 2, com uma entrada por candidato/variante (o sistema monta a tabela a partir dela; não a repita no Markdown); `secoes_seguintes` traz as seções 3 a 6 em Markdown, com os títulos. Se não houver requisitos de propriedades registrados no projeto, use `sem_criterios` = true e deixe `classificacao_por_material` vazia.
+
 ### 1. Decisão de propriedades resumida
 | ID | Candidato/variante | Resultado no escopo | Condição demonstrada | Pendência decisiva |
 |---|---|---|---|---|
@@ -217,7 +219,7 @@ Apresente totais e destaque variantes documentadas que podem resolver lacunas, s
 |---|---|---|---|---|---|---|
 - Uma linha por candidato e por variante avaliados, com os IDs recebidos de Prometeu (ou os locais, com a correspondência).
 - Preencha a coluna "Classificação" somente com Atende, Parcial, Inconclusivo ou Não atende, conforme o tópico 7.
-- Se não houver requisitos de propriedades registrados no projeto, escreva uma única linha informando "Sem requisitos de propriedades registrados" e não classifique os candidatos.
+- Se não houver requisitos de propriedades registrados no projeto, informe `sem_criterios` = true (o sistema escreve "Sem requisitos de propriedades registrados") e não classifique os candidatos.
 
 ### 3. Requisitos e condições
 | ID original/local | Propriedade | Operador/limite | Unidade | Condições | Obrigatoriedade | Prioridade | Ambiguidade |

@@ -22,7 +22,7 @@ bloco_tres = '''1. Confira a correspondência do projeto e do relatório de Prom
 8. Se a pesquisa identificar uma condição comercial mais específica ou uma variante útil, apresente-a separadamente, com sua origem, fonte e campos alterados. Não atribua propriedades mecânicas à variante por ter encontrado sua composição.
 9. Para cada pendência remanescente, indique se depende de esclarecimento do requisito, fonte documental ou controle/análise do lote.'''
 
-bloco_quatro = '''Produza o relatório no formato das suas instruções, incluindo a tabela "Classificação por material", que será lida por Têmis. Preserve a relação candidato → restrição → evidência → resultado.
+bloco_quatro = '''Produza o relatório no formato das suas instruções, preenchendo a classificação de cada candidato/variante no campo estruturado classificacao_por_material, que forma a tabela "Classificação por material" lida por Têmis. Preserve a relação candidato → restrição → evidência → resultado.
 
 A conclusão é química: não apresente aprovação global do material nem refaça a triagem de Prometeu.'''
 
