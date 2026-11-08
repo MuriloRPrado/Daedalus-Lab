@@ -279,8 +279,11 @@ def ler_documento(url: str, *, max_paginas_pdf: int = 10, inicio: int = 0, max_c
         raise ValueError(mensagem)
     eh_pdf = "pdf" in str(metadados.get("contentType") or "").lower() or metadados.get("numPages") is not None
     paginas_lidas = metadados.get("numPages") if eh_pdf else None
-    paginas_total = metadados.get("totalPages", paginas_lidas) if eh_pdf else None
-    truncado = bool(eh_pdf and paginas_total and paginas_lidas and paginas_total > paginas_lidas)
+    paginas_total = metadados.get("totalPages") if eh_pdf else None
+    if eh_pdf and paginas_total is None and paginas_lidas is not None and paginas_lidas >= max_paginas_pdf:
+        truncado = True
+    else:
+        truncado = bool(eh_pdf and paginas_total and paginas_lidas and paginas_total > paginas_lidas)
     creditos = metadados.get("creditsUsed")
     if creditos is None:
         creditos = max(1, paginas_lidas or 1)
