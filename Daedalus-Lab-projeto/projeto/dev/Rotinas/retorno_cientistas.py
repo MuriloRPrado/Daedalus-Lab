@@ -56,15 +56,17 @@ def marcar_retornos_utilizados_caliope(
     id_ret_prometeu: int,
     id_ret_atena: int,
     id_ret_argos: int,
+    id_ret_temis: int,
 ) -> None:
-    """Marca atomicamente os três pareceres consumidos, sem alterar o de Calíope."""
+    """Marca atomicamente os quatro pareceres consumidos, sem alterar o de Calíope."""
     retornos = (
         (id_ret_prometeu, "Prometeu"),
         (id_ret_atena, "Atena"),
         (id_ret_argos, "Argos"),
+        (id_ret_temis, "Têmis"),
     )
-    if len({identificador for identificador, _ in retornos}) != 3:
-        raise ValueError("Os IDs dos três pareceres devem ser distintos.")
+    if len({identificador for identificador, _ in retornos}) != len(retornos):
+        raise ValueError("Os IDs dos pareceres devem ser distintos.")
 
     comando = text("""
         UPDATE retorno_cientistas
