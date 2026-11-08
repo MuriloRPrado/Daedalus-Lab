@@ -141,29 +141,29 @@ def _proxima_pagina(chave_base: str, corpo: dict) -> str | None:
     return url
 
 
-def _buscar_com_filtro_local(chave_base: str, filtro: str, limite: int, formula: str) -> tuple[list[dict], bool]:
-    """Percorre até _MAX_PAGINAS_FILTRO_LOCAL páginas filtrando a fórmula aqui; devolve (itens, busca_incompleta)."""
+def _buscar_com_filtro_local(chave_base: str, filtro: str, limite: int, formula: str) -> tuple[list[dict], str | None]:
+    """Percorre até _MAX_PAGINAS_FILTRO_LOCAL páginas filtrando a fórmula aqui; devolve (itens, motivo_busca_incompleta)."""
     corpo = _requisitar_estruturas(chave_base, filtro, 50)
     encontrados = []
     for pagina in range(_MAX_PAGINAS_FILTRO_LOCAL):
         encontrados += [i for i in corpo.get("data") or [] if _mesma_formula(i.get("attributes") or {}, formula)]
         proxima = _proxima_pagina(chave_base, corpo)
         if len(encontrados) >= limite or not proxima:
-            return encontrados, False
+            return encontrados, None
         if pagina == _MAX_PAGINAS_FILTRO_LOCAL - 1:
-            return encontrados, True
+            break
         try:
             resposta = requests.get(proxima, timeout=45)
             resposta.raise_for_status()
             corpo = resposta.json()
-        except (requests.RequestException, ValueError):
-            return encontrados, True
-    return encontrados, True
+        except (requests.RequestException, ValueError) as erro:
+            return encontrados, f"a página {pagina + 2} falhou ({erro})"[:300]
+    return encontrados, f"só as primeiras {_MAX_PAGINAS_FILTRO_LOCAL} páginas de resultados foram verificadas"
 
 
 def _consultar_base(chave_base: str, filtro: str, limite: int, formula: str | None) -> dict:
     filtro_completo = filtro + (f' AND chemical_formula_reduced="{formula}"' if formula else "")
-    filtrado_localmente = busca_incompleta = False
+    filtrado_localmente, busca_incompleta = False, None
     try:
         try:
             corpo = _requisitar_estruturas(chave_base, filtro_completo, limite)
@@ -178,7 +178,7 @@ def _consultar_base(chave_base: str, filtro: str, limite: int, formula: str | No
     except (requests.RequestException, ValueError) as erro:
         registrar_consulta(f"optimade:{chave_base}", "busca", filtro_completo, ds_erro=str(erro)[:500])
         return {"base": chave_base, "erro": f"Base indisponível ou consulta recusada: {erro}"[:300], "estruturas": []}
-    registrar_consulta(f"optimade:{chave_base}", "busca", filtro_completo)
+    registrar_consulta(f"optimade:{chave_base}", "busca", filtro_completo, ds_erro=busca_incompleta)
     retorno = {
         "base": chave_base,
         "total_na_base": total,
@@ -186,8 +186,8 @@ def _consultar_base(chave_base: str, filtro: str, limite: int, formula: str | No
     }
     if busca_incompleta:
         retorno["observacao"] = (
-            f"A base não aceita filtro por fórmula; só as primeiras {_MAX_PAGINAS_FILTRO_LOCAL} páginas "
-            "de resultados foram verificadas e pode haver outras estruturas com essa fórmula."
+            f"A base não aceita filtro por fórmula e a busca ficou incompleta: {busca_incompleta}. "
+            "Pode haver outras estruturas com essa fórmula."
         )
     elif filtrado_localmente:
         retorno["observacao"] = "A base não aceita filtro por fórmula; o filtro foi aplicado localmente."
