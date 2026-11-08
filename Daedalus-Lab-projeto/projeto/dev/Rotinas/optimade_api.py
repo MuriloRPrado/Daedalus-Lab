@@ -19,7 +19,7 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from functools import reduce
-from urllib.parse import quote
+from urllib.parse import quote, urljoin, urlparse
 
 import requests
 
@@ -127,9 +127,18 @@ def _requisitar_estruturas(chave_base: str, filtro: str, limite: int) -> dict:
     return resposta.json()
 
 
-def _proxima_pagina(corpo: dict) -> str | None:
+def _proxima_pagina(chave_base: str, corpo: dict) -> str | None:
+    """Link da próxima página, aceito só se apontar para o mesmo servidor da base."""
     proxima = (corpo.get("links") or {}).get("next")
-    return proxima.get("href") if isinstance(proxima, dict) else proxima
+    proxima = proxima.get("href") if isinstance(proxima, dict) else proxima
+    if not proxima or not isinstance(proxima, str):
+        return None
+    url_base = BASES[chave_base][1]
+    url = urljoin(url_base + "/", proxima)
+    origem, destino = urlparse(url_base), urlparse(url)
+    if (destino.scheme, destino.netloc) != (origem.scheme, origem.netloc):
+        return None
+    return url
 
 
 def _buscar_com_filtro_local(chave_base: str, filtro: str, limite: int, formula: str) -> tuple[list[dict], bool]:
@@ -138,14 +147,17 @@ def _buscar_com_filtro_local(chave_base: str, filtro: str, limite: int, formula:
     encontrados = []
     for pagina in range(_MAX_PAGINAS_FILTRO_LOCAL):
         encontrados += [i for i in corpo.get("data") or [] if _mesma_formula(i.get("attributes") or {}, formula)]
-        proxima = _proxima_pagina(corpo)
+        proxima = _proxima_pagina(chave_base, corpo)
         if len(encontrados) >= limite or not proxima:
             return encontrados, False
         if pagina == _MAX_PAGINAS_FILTRO_LOCAL - 1:
             return encontrados, True
-        resposta = requests.get(proxima, timeout=45)
-        resposta.raise_for_status()
-        corpo = resposta.json()
+        try:
+            resposta = requests.get(proxima, timeout=45)
+            resposta.raise_for_status()
+            corpo = resposta.json()
+        except (requests.RequestException, ValueError):
+            return encontrados, True
     return encontrados, True
 
 
