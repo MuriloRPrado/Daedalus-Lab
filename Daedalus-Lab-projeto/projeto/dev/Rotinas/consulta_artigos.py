@@ -212,10 +212,14 @@ def ler_artigo(doi: str, max_paginas_pdf: int = 15, inicio: int = 0) -> dict:
         inicio: posição (em caracteres) a partir da qual o conteúdo é devolvido.
     """
     localizacao = localizar_pdf_aberto(doi)["dados"]
-    candidatos = [localizacao.get("url_pdf")] + [l["url_pdf"] for l in localizacao["locais_acesso_aberto"]]
-    candidatos = [u for i, u in enumerate(candidatos) if u and u not in candidatos[:i] and not dominio_bloqueado(u)]
-    if not candidatos and localizacao.get("url_pagina") and localizacao.get("acesso_aberto"):
-        candidatos = [localizacao["url_pagina"]]
+    def _unicos(urls):
+        return [u for i, u in enumerate(urls) if u and u not in urls[:i] and not dominio_bloqueado(u)]
+
+    locais = localizacao["locais_acesso_aberto"]
+    candidatos = _unicos([localizacao.get("url_pdf")] + [l["url_pdf"] for l in locais])
+    texto_completo = bool(candidatos)
+    if not candidatos and localizacao.get("acesso_aberto"):
+        candidatos = _unicos([localizacao.get("url_pagina")] + [l["url_pagina"] for l in locais])
 
     if not candidatos:
         return {
@@ -246,7 +250,13 @@ def ler_artigo(doi: str, max_paginas_pdf: int = 15, inicio: int = 0) -> dict:
             licenca=localizacao.get("licenca"),
             versao=localizacao.get("versao"),
             lido=True,
+            texto_completo=texto_completo,
         )
+        if not texto_completo:
+            resultado["dados"]["observacao"] = (
+                "Sem PDF aberto: foi lida a página de acesso aberto do artigo, que pode conter só o resumo. "
+                "Confira o conteúdo antes de tratá-lo como texto completo."
+            )
         return resultado
     raise ErroArtigos("Não foi possível ler nenhuma versão aberta do artigo. " + " | ".join(erros))
 
