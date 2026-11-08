@@ -38,6 +38,7 @@ BASES = {
     "cod": ("Crystallography Open Database", "https://www.crystallography.net/cod/optimade/v1", "experimental"),
 }
 _MAX_PAGINA = {"cod": 10}
+_MAX_PAGINAS_FILTRO_LOCAL = 5
 BASES_PADRAO = ["materials_project", "alexandria", "oqmd", "jarvis", "materials_cloud", "cod"]
 _CAMPOS_RESUMO = "chemical_formula_reduced,chemical_formula_descriptive,elements,nelements,nsites,lattice_vectors,last_modified"
 _ELEMENTOS = set(
