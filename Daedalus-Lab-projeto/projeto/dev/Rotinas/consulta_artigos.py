@@ -24,6 +24,7 @@ from urllib.parse import quote
 
 import requests
 
+import Rotinas.configuracao  # noqa: F401
 from Rotinas.cache_fontes import registrar_consulta
 from Rotinas.fontes_firecrawl import NIVEL_ARTIGO, dominio_bloqueado
 from Rotinas.firecrawl_api import ler_documento

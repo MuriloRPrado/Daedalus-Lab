@@ -1,3 +1,4 @@
+import Rotinas.configuracao  # noqa: F401  (carrega .env antes dos demais módulos)
 import logging
 import time
 
