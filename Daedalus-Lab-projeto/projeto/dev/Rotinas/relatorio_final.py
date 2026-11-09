@@ -22,6 +22,8 @@ from Rotinas.registro_materiais import listar_materiais_projeto
 #########################################################################
 
 
+SEM_ESTADO = {"id_mat_estado": None, "ds_condicao": "Sem estado registrado"}
+
 class LacunaRelatorio(BaseModel):
     material: str = Field(description="Material e condição a que a lacuna se refere (ou \"Todos\").")
     dado_faltante: str = Field(description="Dado que não foi localizado ou ficou inconclusivo.")
@@ -42,9 +44,9 @@ def secoes_banco(id_projeto: int) -> dict[str, str]:
     """Seções do relatório montadas a partir do banco, por chave."""
     projeto = dados_projeto(id_projeto)
     materiais = listar_materiais_projeto(id_projeto)["materiais"]
-    estados = [(m, e) for m in materiais for e in m["estados"]]
+    estados = [(m, e) for m in materiais for e in m["estados"] or [SEM_ESTADO]]
     ids_materiais = [m["id_material"] for m in materiais]
-    ids_estados = [e["id_mat_estado"] for _, e in estados]
+    ids_estados = [e["id_mat_estado"] for _, e in estados if e["id_mat_estado"] is not None]
     cadastradas = propriedades_cadastradas()
 
     with Session(engine) as session:
@@ -186,7 +188,7 @@ def _materiais(materiais: list[dict], fontes_mat: dict, fontes_est: dict) -> str
         return "Nenhum material foi registrado por Têmis para este projeto."
     linhas = []
     for m in materiais:
-        for e in m["estados"] or [{"id_mat_estado": None, "ds_condicao": None}]:
+        for e in m["estados"] or [SEM_ESTADO]:
             fontes = fontes_mat.get(m["id_material"], []) + [
                 f for f in fontes_est.get(e["id_mat_estado"], []) if f not in fontes_mat.get(m["id_material"], [])]
             linhas.append((m["nm_material"], m["nm_resultado"] or "Não informado", m["nm_grupo"], m["nm_sub_grupo"],
