@@ -215,11 +215,15 @@ def registrar_material(
     with Session(engine) as session:
         with session.begin():
             _bloquear_projeto(session, id_projeto)
-            existentes = session.execute(
-                select(Materiais.id_material, Materiais.nm_material).where(Materiais.id_projeto == id_projeto)
-            ).all()
-            id_material = next((m.id_material for m in existentes if _chave(m.nm_material) == _chave(nm_material)), None)
-            criado = id_material is None
+            existentes = session.execute(select(Materiais).where(Materiais.id_projeto == id_projeto)).scalars().all()
+            existente = next((m for m in existentes if _chave(m.nm_material) == _chave(nm_material)), None)
+            id_material = existente.id_material if existente else None
+            criado = existente is None
+            preencheu_resultado = False
+            if existente is not None and existente.nm_resultado is None:
+                existente.nm_resultado = nm_resultado
+                existente.ds_observacao = existente.ds_observacao or ds_observacao
+                preencheu_resultado = True
             if criado:
                 material = Materiais(
                     id_projeto=id_projeto, nm_grupo=nm_grupo, nm_sub_grupo=nm_sub_grupo,
@@ -231,7 +235,9 @@ def registrar_material(
                 id_material = material.id_material
             fontes = _vincular_fontes(session, MateriaisFonte, ids_fontes, id_material=id_material, id_projeto=id_projeto)
     retorno = {"id_material": id_material, "criado": criado, "fontes_vinculadas": fontes}
-    if not criado:
+    if preencheu_resultado:
+        retorno["aviso"] = "Material já registrado neste projeto; apenas nm_resultado, que estava vazio, foi preenchido."
+    elif not criado:
         retorno["aviso"] = "Material já registrado neste projeto; nada foi inserido."
     return retorno
 
