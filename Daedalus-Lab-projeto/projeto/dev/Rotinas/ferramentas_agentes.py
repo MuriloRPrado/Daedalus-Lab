@@ -14,7 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from Rotinas import materials_project as mp
 from Rotinas.aflow_api import consultar_propriedades_aflow
 from Rotinas.consulta_artigos import buscar_artigos_openalex, ler_artigo, localizar_pdf_aberto
-from Rotinas.exportar_retorno import consulta_arquivo
+from Rotinas.exportar_retorno import consultar_retorno_agente
 from Rotinas.firecrawl_api import buscar_fichas_tecnicas, buscar_web, ler_pagina
 from Rotinas.optimade_api import buscar_estruturas_calculadas, consultar_estrutura_calculada
 from Rotinas.oqmd_api import consultar_estabilidade_oqmd
@@ -157,7 +157,7 @@ CALCULADOS = [
     ferramenta(consultar_propriedades_aflow),
     ferramenta(consultar_estabilidade_oqmd),
 ]
-RELATORIO_ANTERIOR = ferramenta(consulta_arquivo)
+RELATORIO_ANTERIOR = ferramenta(consultar_retorno_agente)
 FONTES_BANCO = ferramenta(registrar_fonte)
 LISTAR_MATERIAIS = ferramenta(listar_materiais_projeto)
 
@@ -176,8 +176,19 @@ FERRAMENTAS_TEMIS = [
     LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_material), ferramenta(registrar_estado_material),
 ]
 
-FERRAMENTAS_CALIOPE = [
-    *WEB, *ARTIGOS, *WIKI, *MATERIALS_PROJECT, *CALCULADOS,
-    LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_composicao),
-    ferramenta(registrar_valor_propriedade), ferramenta(registrar_fase_estrutura),
+FERRAMENTAS_CALIOPE_COMPOSICAO = [
+    *WEB, *ARTIGOS, *WIKI, LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_composicao),
+]
+
+FERRAMENTAS_CALIOPE_PROPRIEDADES = [
+    *WEB, *ARTIGOS, *WIKI, *MATERIALS_PROJECT,
+    ferramenta(consultar_propriedades_aflow), ferramenta(consultar_estabilidade_oqmd),
+    LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_valor_propriedade),
+]
+
+FERRAMENTAS_CALIOPE_ESTRUTURA = [
+    *WEB, *ARTIGOS, *WIKI, *MATERIALS_PROJECT,
+    ferramenta(buscar_estruturas_calculadas), ferramenta(consultar_estrutura_calculada),
+    ferramenta(consultar_estabilidade_oqmd),
+    LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_fase_estrutura),
 ]

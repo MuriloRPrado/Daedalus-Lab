@@ -5,8 +5,12 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 #########################################################################
 
-"""Armazena o retorno do agente e devolve o ID do registro."""
-def salvar_retorno(id_projeto: int, nm_agente: str, ds_retorno: str,) -> int:
+def salvar_retorno(id_projeto: int, nm_agente: str, ds_retorno: str, gerar_arquivo: bool = False) -> int:
+    """Armazena o retorno do agente em retorno_cientistas e devolve o ID do registro.
+
+    gerar_arquivo=True também exporta o retorno em .md para a pasta Arquivos/Retornos
+    (usado só pelo relatório final).
+    """
 
     if not isinstance(nm_agente, str) or not nm_agente.strip():
         raise ValueError("O nome do agente deve ser um texto não vazio.")
@@ -47,24 +51,13 @@ def salvar_retorno(id_projeto: int, nm_agente: str, ds_retorno: str,) -> int:
                 },
             ).scalar_one()
 
-    gerar_arquivo_retorno_cientistas(id_registro, id_projeto, nm_agente)
+    if gerar_arquivo:
+        gerar_arquivo_retorno_cientistas(id_registro, id_projeto, nm_agente)
 
     return id_registro
 
-def marcar_retornos_utilizados_caliope(
-    id_projeto: int,
-    id_ret_prometeu: int,
-    id_ret_atena: int,
-    id_ret_argos: int,
-    id_ret_temis: int,
-) -> None:
-    """Marca atomicamente os quatro pareceres consumidos, sem alterar o de Calíope."""
-    retornos = (
-        (id_ret_prometeu, "Prometeu"),
-        (id_ret_atena, "Atena"),
-        (id_ret_argos, "Argos"),
-        (id_ret_temis, "Têmis"),
-    )
+def marcar_retornos_utilizados(id_projeto: int, retornos: list[tuple[int, str]]) -> None:
+    """Marca atomicamente como utilizados os retornos (id_ret_cientistas, nm_agente) consumidos pelo relatório final."""
     if len({identificador for identificador, _ in retornos}) != len(retornos):
         raise ValueError("Os IDs dos pareceres devem ser distintos.")
 

@@ -8,7 +8,7 @@ from sqlalchemy import select, update, func
 from sqlalchemy.orm import Session
 
 from database import engine, Projeto, RetornoCientista
-from Rotinas.retorno_cientistas import marcar_retornos_utilizados_caliope
+from Rotinas.retorno_cientistas import marcar_retornos_utilizados
 
 from Cientista_Prometeu.agentePrometeu import executar_pesquisa_prometeu
 from Cientista_Prometeu.promptPrometeu import gerar_prompt_prometeu
@@ -22,8 +22,14 @@ from Cientista_Argos.agenteArgos import executar_pesquisa_argos
 from Cientista_Temis.promptTemis import gerar_prompt_temis
 from Cientista_Temis.agenteTemis import executar_pesquisa_temis
 
-from Cientista_Caliope.promptCaliope import gerar_prompt_caliope
-from Cientista_Caliope.agenteCaliope import executar_pesquisa_caliope
+from Cientista_Caliope.promptCaliope import (
+    gerar_prompt_caliope_composicao, gerar_prompt_caliope_estrutura, gerar_prompt_caliope_propriedades,
+    gerar_prompt_caliope_relatorio,
+)
+from Cientista_Caliope.agenteCaliope import (
+    executar_caliope_composicao, executar_caliope_estrutura, executar_caliope_propriedades,
+    executar_caliope_relatorio,
+)
 #########################################################################
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -34,6 +40,7 @@ STATUS_ERRO = 11
 STATUS_EM_ANDAMENTO = 21
 STATUS_PROMETEU_OK = 23
 STATUS_TEMIS_OK = 28
+STATUS_ORGANIZANDO_PESQUISA = 29
 STATUS_FINAL_OK = 12
 
 SEGUNDOS_ENTRE_AGENTES = 5
@@ -218,14 +225,30 @@ def rodar_temis(projeto, id_ret_prometeu: int, id_ret_atena: int, id_ret_argos: 
         args_prompt=(id_ret_prometeu, id_ret_atena, id_ret_argos), id_reaproveitado=id_reaproveitado)
 
 
-def rodar_caliope(projeto, id_ret_prometeu: int, id_ret_atena: int, id_ret_argos: int, id_ret_temis: int,
-                  id_reaproveitado: int | None = None) -> int:
+CALIOPE_COMPOSICAO = "Calíope - Composição"
+CALIOPE_PROPRIEDADES = "Calíope - Propriedades"
+CALIOPE_ESTRUTURA = "Calíope - Estrutura Cristalina"
+CALIOPE_RELATORIO = "Calíope - Relatório"
+
+
+def rodar_caliope_pesquisa(projeto, nm_agente: str, gerar_prompt, executar, id_ret_temis: int,
+                           id_reaproveitado: int | None = None) -> int:
+    """Etapa de pesquisa da Calíope: o projeto fica em "Organizando Pesquisa" até o relatório."""
     return rodar_agente(
-        projeto, "Calíope", gerar_prompt_caliope, executar_pesquisa_caliope,
-        st_final=STATUS_FINAL_OK,
-        args_prompt=(id_ret_temis,), id_reaproveitado=id_reaproveitado,
-        apos_retorno=lambda: marcar_retornos_utilizados_caliope(
-            projeto.id_projeto, id_ret_prometeu, id_ret_atena, id_ret_argos, id_ret_temis))
+        projeto, nm_agente, gerar_prompt, executar,
+        st_final=None, args_prompt=(id_ret_temis,), id_reaproveitado=id_reaproveitado,
+        st_andamento=STATUS_ORGANIZANDO_PESQUISA)
+
+
+def rodar_caliope_relatorio(projeto, retornos: dict[str, int], id_reaproveitado: int | None = None) -> int:
+    """retornos: id_ret_cientistas de cada agente anterior; todos são marcados como utilizados ao fim."""
+    return rodar_agente(
+        projeto, CALIOPE_RELATORIO, gerar_prompt_caliope_relatorio, executar_caliope_relatorio,
+        st_final=STATUS_FINAL_OK, st_andamento=STATUS_ORGANIZANDO_PESQUISA,
+        args_prompt=(retornos[CALIOPE_COMPOSICAO], retornos[CALIOPE_PROPRIEDADES], retornos[CALIOPE_ESTRUTURA]),
+        id_reaproveitado=id_reaproveitado,
+        apos_retorno=lambda: marcar_retornos_utilizados(
+            projeto.id_projeto, [(id_ret, nm_agente) for nm_agente, id_ret in retornos.items()]))
 
 
 def pausa_entre_agentes():
@@ -274,9 +297,20 @@ def iniciar(id_projeto: int | None = None):
         reaproveitar("Têmis", id_ret_atena, id_ret_argos))
     pausa_entre_agentes()
 
-    id_ret_final = rodar_caliope(
-        projeto, id_ret_prometeu, id_ret_atena, id_ret_argos, id_ret_temis,
-        reaproveitar("Calíope", id_ret_temis))
+    # Calíope em etapas sequenciais: cada uma grava no banco a sua parte da caracterização.
+    retornos = {"Prometeu": id_ret_prometeu, "Atena": id_ret_atena, "Argos": id_ret_argos, "Têmis": id_ret_temis}
+    for nm_agente, gerar_prompt, executar in (
+        (CALIOPE_COMPOSICAO, gerar_prompt_caliope_composicao, executar_caliope_composicao),
+        (CALIOPE_PROPRIEDADES, gerar_prompt_caliope_propriedades, executar_caliope_propriedades),
+        (CALIOPE_ESTRUTURA, gerar_prompt_caliope_estrutura, executar_caliope_estrutura),
+    ):
+        retornos[nm_agente] = rodar_caliope_pesquisa(
+            projeto, nm_agente, gerar_prompt, executar, id_ret_temis, reaproveitar(nm_agente, id_ret_temis))
+        pausa_entre_agentes()
+
+    id_ret_final = rodar_caliope_relatorio(
+        projeto, retornos,
+        reaproveitar(CALIOPE_RELATORIO, *(retornos[n] for n in (CALIOPE_COMPOSICAO, CALIOPE_PROPRIEDADES, CALIOPE_ESTRUTURA))))
 
     return projeto.id_projeto, id_ret_final
 

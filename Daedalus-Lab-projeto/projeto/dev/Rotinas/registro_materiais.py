@@ -179,7 +179,8 @@ def registrar_fonte(
 def registrar_material(
     id_projeto: int,
     nm_material: str,
-    ds_observacao: str,
+    nm_resultado: str,
+    ds_observacao: str | None = None,
     nm_grupo: str | None = None,
     nm_sub_grupo: str | None = None,
     nm_norma_designacao: str | None = None,
@@ -194,16 +195,19 @@ def registrar_material(
     Args:
         id_projeto: ID do projeto.
         nm_material: Designação do material/variante, incluindo a condição quando ela diferencia a variante (ex.: "AA 7075-T7351").
-        ds_observacao: Deve começar com "Atende" ou "Parcial", seguido das informações necessárias (ex.: "Parcial — atende às propriedades; restrição de Cu inconclusiva").
+        nm_resultado: Resultado final de Têmis: "Atende" ou "Parcial".
+        ds_observacao: Comentários sobre o resultado (ex.: "Atena: Atende; Argos: Inconclusivo (teor de Cu depende do lote)").
         nm_grupo: Grupo do material (ex.: "Alumínio e ligas de alumínio").
         nm_sub_grupo: Subgrupo do material (ex.: "Liga Al-Zn-Mg-Cu série 7xxx").
         nm_norma_designacao: Norma de designação confirmada (ex.: "ASTM B209").
         ids_fontes: IDs devolvidos por registrar_fonte que sustentam a identificação do material.
     """
     nm_material = _texto(nm_material, "nm_material", 100, obrigatorio=True)
-    ds_observacao = _texto(ds_observacao, "ds_observacao", obrigatorio=True)
-    if not ds_observacao.startswith(RESULTADOS_TEMIS):
-        raise ValueError('ds_observacao deve começar com "Atende" ou "Parcial".')
+    nm_resultado = _texto(nm_resultado, "nm_resultado", 100, obrigatorio=True)
+    nm_resultado = next((r for r in RESULTADOS_TEMIS if r.lower() == nm_resultado.lower()), None)
+    if nm_resultado is None:
+        raise ValueError('nm_resultado deve ser "Atende" ou "Parcial".')
+    ds_observacao = _texto(ds_observacao, "ds_observacao")
     nm_grupo = _texto(nm_grupo, "nm_grupo", 50)
     nm_sub_grupo = _texto(nm_sub_grupo, "nm_sub_grupo", 50)
     nm_norma_designacao = _texto(nm_norma_designacao, "nm_norma_designacao", 150)
@@ -211,22 +215,29 @@ def registrar_material(
     with Session(engine) as session:
         with session.begin():
             _bloquear_projeto(session, id_projeto)
-            existentes = session.execute(
-                select(Materiais.id_material, Materiais.nm_material).where(Materiais.id_projeto == id_projeto)
-            ).all()
-            id_material = next((m.id_material for m in existentes if _chave(m.nm_material) == _chave(nm_material)), None)
-            criado = id_material is None
+            existentes = session.execute(select(Materiais).where(Materiais.id_projeto == id_projeto)).scalars().all()
+            existente = next((m for m in existentes if _chave(m.nm_material) == _chave(nm_material)), None)
+            id_material = existente.id_material if existente else None
+            criado = existente is None
+            preencheu_resultado = False
+            if existente is not None and existente.nm_resultado is None:
+                existente.nm_resultado = nm_resultado
+                existente.ds_observacao = existente.ds_observacao or ds_observacao
+                preencheu_resultado = True
             if criado:
                 material = Materiais(
                     id_projeto=id_projeto, nm_grupo=nm_grupo, nm_sub_grupo=nm_sub_grupo,
-                    nm_norma_designacao=nm_norma_designacao, nm_material=nm_material, ds_observacao=ds_observacao,
+                    nm_norma_designacao=nm_norma_designacao, nm_material=nm_material, nm_resultado=nm_resultado,
+                    ds_observacao=ds_observacao,
                 )
                 session.add(material)
                 session.flush()
                 id_material = material.id_material
             fontes = _vincular_fontes(session, MateriaisFonte, ids_fontes, id_material=id_material, id_projeto=id_projeto)
     retorno = {"id_material": id_material, "criado": criado, "fontes_vinculadas": fontes}
-    if not criado:
+    if preencheu_resultado:
+        retorno["aviso"] = "Material já registrado neste projeto; apenas nm_resultado, que estava vazio, foi preenchido."
+    elif not criado:
         retorno["aviso"] = "Material já registrado neste projeto; nada foi inserido."
     return retorno
 
@@ -545,6 +556,7 @@ def listar_materiais_projeto(id_projeto: int) -> dict:
                 "nm_grupo": material.nm_grupo,
                 "nm_sub_grupo": material.nm_sub_grupo,
                 "nm_norma_designacao": material.nm_norma_designacao,
+                "nm_resultado": material.nm_resultado,
                 "ds_observacao": material.ds_observacao,
                 "qtd_elementos_composicao": qtd_comp,
                 "estados": [
