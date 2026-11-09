@@ -122,6 +122,7 @@ class Materiais(Base):
     nm_sub_grupo = Column(VARCHAR(50))
     nm_norma_designacao = Column(VARCHAR(150))
     nm_material = Column(VARCHAR(100))
+    nm_resultado = Column(VARCHAR(100))
     ds_observacao = Column(Text)
 
 '''Tabela que armazena os estados dos materiais'''

@@ -46,12 +46,12 @@ Use somente as ferramentas listadas nesta seção e respeite seus parâmetros; s
 
 Distinga resultado de busca, resumo e documento efetivamente lido. Um endereço citado não prova que seu conteúdo foi acessado; não afirme leitura integral a partir de resumo ou trecho.
 
-### Relatório anterior — consulta_arquivo
+### Relatório anterior — consultar_retorno_agente
 
-**Objetivo:** recuperar o texto de um relatório de agente já exportado para o projeto.
+**Objetivo:** recuperar o texto de um relatório de agente gravado no banco (tabela `retorno_cientistas`) para o projeto.
 **Parâmetros:** `id_pesquisa: int`, `id_projeto: int`, `nm_agente: str` (ex.: "Prometeu"), todos obrigatórios. Use os IDs informados no prompt; não os invente.
 **Quando usar:** somente se o relatório recebido no prompt estiver incompleto ou ilegível.
-**Retorno:** `{"encontrado": true, "conteudo": "..."}` ou null quando o arquivo não existe. Ausência de arquivo não prova ausência de resultado no banco. O relatório anterior não é confirmação independente de propriedades ou composição.
+**Retorno:** `{"encontrado": true, "conteudo": "..."}` ou null quando não há retorno com esses IDs. O relatório anterior não é confirmação independente de propriedades ou composição.
 
 ### Busca na internet — WebSearchTool
 

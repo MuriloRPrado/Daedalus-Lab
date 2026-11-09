@@ -52,7 +52,8 @@ Para cada material com resultado Atende ou Parcial:
 3. Registre o material com `registrar_material`:
    - `nm_material`: designação do material/variante, incluindo a condição quando ela diferencia variantes (cada variante tem seu próprio registro).
    - `nm_grupo`, `nm_sub_grupo` e `nm_norma_designacao`: conforme o relatório de Prometeu (ou do agente que propôs a variante). Use a norma somente quando confirmada.
-   - `ds_observacao`: comece com o resultado (**"Atende"** ou **"Parcial"**), seguido das classificações de origem e das informações necessárias. Exemplo: "Parcial — Atena: Atende; Argos: Inconclusivo (teor de Cu depende do lote)". Para Parcial, indique quais critérios não foram atendidos ou ficaram inconclusivos.
+   - `nm_resultado`: o resultado final, exatamente **"Atende"** ou **"Parcial"**.
+   - `ds_observacao`: as classificações de origem e os comentários necessários, sem repetir o resultado. Exemplo: "Atena: Atende; Argos: Inconclusivo (teor de Cu depende do lote)". Para Parcial, indique quais critérios não foram atendidos ou ficaram inconclusivos.
    - `ids_fontes`: fontes que sustentam a identificação do material.
 4. Registre o estado do material com `registrar_estado_material`, usando o `id_material` devolvido: condição/têmpera e forma do produto (`ds_condicao`), aplicação e ambiente documentados, rota de fabricação, tratamento térmico e tratamento mecânico, conforme os relatórios, e as fontes que os sustentam.
 5. Se uma ferramenta devolver `"criado": false`, o registro já existia: não tente gravar de novo e informe isso no relatório.
@@ -66,7 +67,7 @@ Este guia descreve as ferramentas registradas para você em `projeto/dev/Rotinas
 
 ### Banco — listar_materiais_projeto
 
-**Objetivo:** listar os materiais já registrados no projeto, com `id_material`, `ds_observacao`, estados (`id_mat_estado` e campos) e a quantidade de composições, valores de propriedades e fases já gravados.
+**Objetivo:** listar os materiais já registrados no projeto, com `id_material`, `nm_resultado`, `ds_observacao`, estados (`id_mat_estado` e campos) e a quantidade de composições, valores de propriedades e fases já gravados.
 **Parâmetros:** `id_projeto: int`.
 **Quando usar:** antes de gravar e sempre que precisar confirmar IDs.
 
@@ -80,8 +81,8 @@ Este guia descreve as ferramentas registradas para você em `projeto/dev/Rotinas
 ### Banco — registrar_material
 
 **Objetivo:** registrar um material/variante selecionado na tabela `materiais` e vincular suas fontes em `ma_fontes`.
-**Parâmetros:** `id_projeto: int`, `nm_material: str` (até 100 caracteres), `ds_observacao: str` (obrigatórios); `nm_grupo` (até 50), `nm_sub_grupo` (até 50), `nm_norma_designacao` (até 150), `ids_fontes: list[int]`.
-**Regras:** `ds_observacao` deve começar com "Atende" ou "Parcial". Cada variante tem `nm_material` próprio (ex.: "AA 7075-T651" e "AA 7075-T7351"). Se já houver material com o mesmo `nm_material` no projeto, nada é inserido e a ferramenta devolve o `id_material` existente com `"criado": false`.
+**Parâmetros:** `id_projeto: int`, `nm_material: str` (até 100 caracteres), `nm_resultado: str` ("Atende" ou "Parcial") (obrigatórios); `ds_observacao` (comentários), `nm_grupo` (até 50), `nm_sub_grupo` (até 50), `nm_norma_designacao` (até 150), `ids_fontes: list[int]`.
+**Regras:** `nm_resultado` aceita somente "Atende" ou "Parcial". Cada variante tem `nm_material` próprio (ex.: "AA 7075-T651" e "AA 7075-T7351"). Se já houver material com o mesmo `nm_material` no projeto, nada é inserido e a ferramenta devolve o `id_material` existente com `"criado": false`.
 
 ### Banco — registrar_estado_material
 
