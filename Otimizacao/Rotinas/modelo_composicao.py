@@ -123,6 +123,9 @@ class ModeloComposicao:
         desconhecidos = set(composicao) - set(self.elementos) - {"Fe"}
         if desconhecidos:
             raise ValueError(f"Elementos fora do modelo: {sorted(desconhecidos)} (aceitos: {self.elementos}).")
+        invalidos = {e: v for e, v in composicao.items() if not np.isfinite(float(v)) or float(v) < 0}
+        if invalidos:
+            raise ValueError(f"Teores inválidos (devem ser finitos e >= 0 % em massa): {invalidos}.")
         return np.array([float(composicao.get(e, 0.0)) for e in self.elementos])
 
     def fora_do_dominio(self, composicao: dict[str, float]) -> list[str]:
