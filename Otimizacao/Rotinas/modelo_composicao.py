@@ -12,6 +12,7 @@ previstas, mas marcadas com fl_no_dominio = False.
 """
 ######################### BIBLIOTECAS ###################################
 from datetime import datetime, timezone
+from pathlib import Path
 
 import joblib
 import numpy as np
@@ -26,6 +27,12 @@ from Rotinas.dados_acos import ALVOS, ELEMENTOS_LIGA, NOME_DATASET, carregar_dat
 NOME_MODELO = "composicao_acos"
 TIPO_MODELO = "ensemble_xgboost_bootstrap"
 ARQUIVO_MODELO = PASTA_MODELOS / f"{NOME_MODELO}.joblib"
+
+
+def arquivo_versao(versao: str) -> Path:
+    return PASTA_MODELOS / f"{NOME_MODELO}_{versao}.joblib"
+
+
 TAMANHO_ENSEMBLE = 10
 HIPERPARAMETROS = dict(n_estimators=400, max_depth=4, learning_rate=0.05, subsample=0.8,
                        colsample_bytree=0.8, min_child_weight=2, n_jobs=1)
@@ -95,6 +102,7 @@ def treinar(salvar: bool = True) -> dict:
         }
     if salvar:
         PASTA_MODELOS.mkdir(parents=True, exist_ok=True)
+        joblib.dump(artefato, arquivo_versao(artefato["versao"]))
         joblib.dump(artefato, ARQUIVO_MODELO)
     return artefato
 
@@ -102,11 +110,11 @@ def treinar(salvar: bool = True) -> dict:
 class ModeloComposicao:
     """Carrega o artefato treinado e prevê propriedades a partir da composição (% em massa)."""
 
-    def __init__(self, artefato: dict | None = None):
+    def __init__(self, artefato: dict | None = None, caminho: Path = ARQUIVO_MODELO):
         if artefato is None:
-            if not ARQUIVO_MODELO.is_file():
-                raise FileNotFoundError(f"Modelo não encontrado em {ARQUIVO_MODELO}; rode treinar_modelo.py.")
-            artefato = joblib.load(ARQUIVO_MODELO)
+            if not caminho.is_file():
+                raise FileNotFoundError(f"Modelo não encontrado em {caminho}; rode treinar_modelo.py.")
+            artefato = joblib.load(caminho)
         self.artefato = artefato
         self.elementos = artefato["elementos"]
         self.dominio = artefato["dominio"]

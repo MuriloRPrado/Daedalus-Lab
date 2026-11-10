@@ -6,7 +6,7 @@ Sem DATABASE_URL (ou com --sem-banco) o modelo é salvo em modelos/ sem registro
 import argparse
 import os
 
-from Rotinas.modelo_composicao import ARQUIVO_MODELO, treinar
+from Rotinas.modelo_composicao import ARQUIVO_MODELO, arquivo_versao, treinar
 
 
 def registrar(artefato: dict) -> list[int]:
@@ -21,7 +21,7 @@ def registrar(artefato: dict) -> list[int]:
                 nm_propriedade=alvo, ds_unidade=dados["unidade"], nm_dataset=artefato["dataset"],
                 nr_amostras=dados["nr_amostras"], vl_mae=metricas["mae"], vl_rmse=metricas["rmse"],
                 vl_r2=metricas["r2"], ds_metricas=metricas | {"hiperparametros": artefato["hiperparametros"]},
-                ds_dominio=artefato["dominio"], ds_caminho_artefato=str(ARQUIVO_MODELO),
+                ds_dominio=artefato["dominio"], ds_caminho_artefato=str(arquivo_versao(artefato["versao"])),
             )
             sessao.add(registro)
             registros.append(registro)
