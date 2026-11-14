@@ -15,11 +15,8 @@ from datetime import date
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from database import (
-    ComposicaoFonte, ComposicaoMaterial, EstrutCristalinaFontes, EstruturaCristalina, Fontes,
-    Materiais, MateriaisEstado, MateriaisEstadosFonte, MateriaisFonte, Propriedade,
-    ValorPropriedades, ValorPropriedadesFonte, engine,
-)
+from database import (ComposicaoMaterial, Fontes,
+    Materiais, MateriaisEstadosFonte, MateriaisFonte, Propriedade, ComposicaoFonte, engine)
 from Rotinas.cache_fontes import contexto_atual
 from Rotinas.fontes_firecrawl import normalizar_url
 #########################################################################

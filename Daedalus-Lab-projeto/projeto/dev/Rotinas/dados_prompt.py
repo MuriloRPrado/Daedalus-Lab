@@ -17,7 +17,6 @@ COLUNAS_PROJETO = (
     Projeto.ds_ambiente,
     Projeto.nm_material_ref,
     Projeto.ds_rota_fabricacao,
-    Projeto.ds_disponibilidade,
     Projeto.ds_custo,
     Projeto.cd_status,
     Projeto.ds_observacao,
@@ -45,17 +44,10 @@ def requisitos_projeto(id_projeto: int) -> list[dict]:
     with Session(engine) as session:
         registros = session.execute(
             select(
-                ProjetoRequisitos.id_requisitos,
-                ProjetoRequisitos.id_projeto,
-                ProjetoRequisitos.id_propriedade,
                 ProjetoRequisitos.nm_propriedade,
-                ProjetoRequisitos.ds_operador,
-                ProjetoRequisitos.vl_alvo,
-                ProjetoRequisitos.vl_min,
-                ProjetoRequisitos.vl_max,
+                ProjetoRequisitos.ds_descricao,
                 ProjetoRequisitos.ds_unidade,
                 ProjetoRequisitos.fl_obrigatorio,
-                ProjetoRequisitos.ds_observacao,
             ).where(ProjetoRequisitos.id_projeto == id_projeto).order_by(ProjetoRequisitos.id_requisitos)
         ).mappings().all()
     return [dict(r) for r in registros]
@@ -66,12 +58,8 @@ def restricoes_projeto(id_projeto: int) -> list[dict]:
     with Session(engine) as session:
         registros = session.execute(
             select(
-                ElementoProjeto.id_elemento_restricao,
-                ElementoProjeto.id_projeto,
                 ElementoProjeto.nm_sigla_elemento,
-                ElementoProjeto.tp_restricao,
-                ElementoProjeto.ds_limite,
-                ElementoProjeto.ds_observacao,
+                ElementoProjeto.ds_restricao,
             ).where(ElementoProjeto.id_projeto == id_projeto).order_by(ElementoProjeto.id_elemento_restricao)
         ).mappings().all()
     return [dict(r) for r in registros]

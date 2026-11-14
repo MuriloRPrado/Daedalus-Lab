@@ -161,7 +161,7 @@ RELATORIO_ANTERIOR = ferramenta(consultar_retorno_agente)
 FONTES_BANCO = ferramenta(registrar_fonte)
 LISTAR_MATERIAIS = ferramenta(listar_materiais_projeto)
 
-FERRAMENTAS_PROMETEU = [*WEB, *ARTIGOS, *WIKI, *MATERIALS_PROJECT, *CALCULADOS]
+FERRAMENTAS_PROMETEU = [*WEB, *ARTIGOS, *WIKI, *CALCULADOS, LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_material), ferramenta(registrar_estado_material)]
 
 FERRAMENTAS_ATENA = [
     RELATORIO_ANTERIOR, *WEB, *ARTIGOS, *WIKI,

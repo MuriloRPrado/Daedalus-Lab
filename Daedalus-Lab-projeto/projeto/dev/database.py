@@ -35,7 +35,6 @@ class Projeto(Base):
     ds_ambiente = Column(Text)
     nm_material_ref = Column(VARCHAR(255))
     ds_rota_fabricacao = Column(VARCHAR(255))
-    ds_disponibilidade = Column(Text)
     ds_custo = Column(VARCHAR(100))
     cd_status = Column(Integer, ForeignKey("status.cd_status", name="fk_projeto_status"))
     dt_criacao = Column(TIMESTAMP(timezone=True), server_default=func.now())   # Indicar que a data traz o fuso horário e o próprio SQL preenche o registro
@@ -51,13 +50,9 @@ class ProjetoRequisitos(Base):
     id_projeto = Column(Integer, ForeignKey("projeto.id_projeto"))
     id_propriedade = Column(Integer, ForeignKey("propriedades_materiais.id_propriedade"))
     nm_propriedade = Column(VARCHAR(150))
-    ds_operador = Column(VARCHAR(10))
-    vl_alvo = Column(Float)
-    vl_min = Column(Float)
-    vl_max = Column(Float)
+    ds_descricao = Column(Text)
     ds_unidade = Column(VARCHAR(30))
     fl_obrigatorio = Column(Boolean)
-    ds_observacao = Column(VARCHAR(255))
 
 '''Tabela que armazena os elementos prioritários, restritos ou proibidos para a pesquisa'''
 class ElementoProjeto(Base):
@@ -66,9 +61,7 @@ class ElementoProjeto(Base):
     id_elemento_restricao = Column(Integer, primary_key=True)
     id_projeto = Column(Integer, ForeignKey("projeto.id_projeto"))
     nm_sigla_elemento = Column(VARCHAR(50))
-    tp_restricao = Column(VARCHAR(50))
-    ds_limite = Column(VARCHAR(100))
-    ds_observacao = Column(VARCHAR(255))
+    ds_restricao = Column(Text)
 
 '''Tabela que armazena os nomes das propriedades'''
 class Propriedade(Base):
@@ -122,21 +115,13 @@ class Materiais(Base):
     nm_sub_grupo = Column(VARCHAR(50))
     nm_norma_designacao = Column(VARCHAR(150))
     nm_material = Column(VARCHAR(100))
-    nm_resultado = Column(VARCHAR(100))
-    ds_observacao = Column(Text)
-
-'''Tabela que armazena os estados dos materiais'''
-class MateriaisEstado(Base):
-    __tablename__ = 'materiais_estado'
-
-    id_mat_estado = Column(Integer, primary_key=True)
-    id_material = Column(Integer, ForeignKey("materiais.id_material"))
     ds_aplicacao = Column(Text)
     ds_ambiente = Column(Text)
-    ds_condicao = Column(VARCHAR(255))
-    ds_rota_fabricacao = Column(VARCHAR(255))
+    ds_condicao = Column(Text)
+    ds_rota_fabricacao = Column(Text)
     ds_trat_termico = Column(Text)
     ds_trat_mecanico = Column(Text)
+    ds_observacao = Column(Text)
 
 '''Tabela que armazena as composições químicas dos materiais'''
 class ComposicaoMaterial(Base):
@@ -151,43 +136,13 @@ class ComposicaoMaterial(Base):
     ds_observacao = Column(Text)
     nm_sigla = Column(VARCHAR(80))
 
-'''Tabela que armazena as estruturas cristalinas dos materiais'''
-class EstruturaCristalina(Base):
-    __tablename__ = 'fase_estrut_cristalina'
-
-    id_fase = Column(Integer, primary_key=True)
-    id_mat_estado = Column(Integer, ForeignKey("materiais_estado.id_mat_estado"))
-    nm_fase = Column(VARCHAR(255))
-    nm_estrut_cristalina = Column(VARCHAR(255))
-    ds_grupo_espacial = Column(Text)
-    vl_fracao_fase = Column(VARCHAR(255))
-    nm_base_fracao = Column(VARCHAR(100))
-    vl_parametro_a_ang = Column(Float)
-    vl_parametro_b_ang = Column(Float)
-    vl_parametro_c_ang = Column(Float)
-    vl_angulo_alfa_graus = Column(Float)
-    vl_angulo_beta_graus = Column(Float)
-    vl_angulo_gama_graus = Column(Float)
-    vl_massa_especifica_kgm3 = Column(Float)
-    vl_temperatura_k = Column(Float)
-    vl_pressao_pa = Column(Float)
-
-'''Tabela que armazena as fontes vinculadas as composições dos materiais'''
+'''Tabela que armazena as fontes das composições dos materiais'''
 class ComposicaoFonte(Base):
-    __tablename__ = 'cm_fontes'
+    __tablename__ = 'composicao_fonte'
 
-    id_cm_fonte = Column(Integer, primary_key=True)
-    id_composicao = Column(Integer, ForeignKey("composicao_material.id_composicao"))
-    id_material = Column(Integer, ForeignKey("materiais.id_material"))
+    id_comp_fonte = Column(Integer, primary_key=True)
     id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
-
-'''Tabela que armazena as fontes vinculadas as estruturas cristalinas dos materiais'''
-class EstrutCristalinaFontes(Base):
-    __tablename__ = 'fec_fontes'
-
-    id_fec_fonte = Column(Integer, primary_key=True)
-    id_fase = Column(Integer, ForeignKey("fase_estrut_cristalina.id_fase"))
-    id_mat_estado = Column(Integer, ForeignKey("materiais_estado.id_mat_estado"))
+    id_composicao = Column(Integer, ForeignKey("composicao_material.id_composicao"))
     id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
 
 '''Tabela que armazena as fontes dos materiais'''
@@ -206,27 +161,6 @@ class MateriaisEstadosFonte(Base):
     id_me_fonte = Column(Integer, primary_key=True)
     id_mat_estado = Column(Integer, ForeignKey("materiais_estado.id_mat_estado"))
     id_material = Column(Integer, ForeignKey("materiais.id_material"))
-    id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
-
-'''Tabela que armazena os valores das propriedades'''
-class ValorPropriedades(Base):
-    __tablename__ = 'valor_propriedades_materiais'
-
-    id_vl_prop = Column(Integer, primary_key=True)
-    id_propriedade = Column(Integer, ForeignKey("propriedades_materiais.id_propriedade"))
-    id_mat_estado = Column(Integer, ForeignKey("materiais_estado.id_mat_estado"))
-    vl_prop = Column(Float)
-    vl_min_prop = Column(Float)
-    vl_max_prop = Column(Float)
-    tp_valor = Column(VARCHAR(150))
-
-'''Tabela que armazena as fontes dos valores de propriedades'''
-class ValorPropriedadesFonte(Base):
-    __tablename__ = 'vlp_fontes'
-
-    id_vlp_fonte = Column(Integer, primary_key=True)
-    id_vl_prop = Column(Integer, ForeignKey("valor_propriedades_materiais.id_vl_prop"))
-    id_mat_estado = Column(Integer, ForeignKey("materiais_estado.id_mat_estado"))
     id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
 
 class Fontes(Base):
