@@ -18,10 +18,7 @@ from Rotinas.exportar_retorno import consultar_retorno_agente
 from Rotinas.firecrawl_api import buscar_fichas_tecnicas, buscar_web, ler_pagina
 from Rotinas.optimade_api import buscar_estruturas_calculadas, consultar_estrutura_calculada
 from Rotinas.oqmd_api import consultar_estabilidade_oqmd
-from Rotinas.registro_materiais import (
-    listar_materiais_projeto, registrar_composicao, registrar_estado_material, registrar_fase_estrutura,
-    registrar_fonte, registrar_material, registrar_valor_propriedade,
-)
+from Rotinas.registro_materiais import listar_materiais_projeto, registrar_composicao, registrar_fonte, registrar_material
 from Rotinas.wiki_api import buscar_material_wikidata, buscar_wikipedia, consultar_material_wikidata, ler_wikipedia
 #########################################################################
 
@@ -161,7 +158,10 @@ RELATORIO_ANTERIOR = ferramenta(consultar_retorno_agente)
 FONTES_BANCO = ferramenta(registrar_fonte)
 LISTAR_MATERIAIS = ferramenta(listar_materiais_projeto)
 
-FERRAMENTAS_PROMETEU = [*WEB, *ARTIGOS, *WIKI, *CALCULADOS, LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_material), ferramenta(registrar_estado_material)]
+FERRAMENTAS_PROMETEU = [
+    *WEB, *ARTIGOS, *WIKI, ferramenta(consultar_propriedades_aflow),
+    LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_material), ferramenta(registrar_composicao),
+]
 
 FERRAMENTAS_ATENA = [
     RELATORIO_ANTERIOR, *WEB, *ARTIGOS, *WIKI,
@@ -173,7 +173,7 @@ FERRAMENTAS_ATENA = [
 FERRAMENTAS_ARGOS = [RELATORIO_ANTERIOR, *WEB, *ARTIGOS, *WIKI, buscar_materiais_por_elementos_mp]
 
 FERRAMENTAS_TEMIS = [
-    LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_material), ferramenta(registrar_estado_material),
+    LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_material),
 ]
 
 FERRAMENTAS_CALIOPE_COMPOSICAO = [
@@ -183,12 +183,12 @@ FERRAMENTAS_CALIOPE_COMPOSICAO = [
 FERRAMENTAS_CALIOPE_PROPRIEDADES = [
     *WEB, *ARTIGOS, *WIKI, *MATERIALS_PROJECT,
     ferramenta(consultar_propriedades_aflow), ferramenta(consultar_estabilidade_oqmd),
-    LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_valor_propriedade),
+    LISTAR_MATERIAIS, FONTES_BANCO,
 ]
 
 FERRAMENTAS_CALIOPE_ESTRUTURA = [
     *WEB, *ARTIGOS, *WIKI, *MATERIALS_PROJECT,
     ferramenta(buscar_estruturas_calculadas), ferramenta(consultar_estrutura_calculada),
     ferramenta(consultar_estabilidade_oqmd),
-    LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_fase_estrutura),
+    LISTAR_MATERIAIS, FONTES_BANCO,
 ]

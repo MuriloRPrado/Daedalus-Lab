@@ -1,5 +1,5 @@
 ############################## BIBLIOTECAS ##############################
-from sqlalchemy import create_engine, Column, Integer, Numeric, VARCHAR, DATE, Boolean, ForeignKey, Text, TIMESTAMP, func, Float, UniqueConstraint, CHAR
+from sqlalchemy import create_engine, Column, Integer, Numeric, VARCHAR, DATE, Boolean, ForeignKey, Text, TIMESTAMP, func, UniqueConstraint, CHAR
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 
@@ -141,7 +141,6 @@ class ComposicaoFonte(Base):
     __tablename__ = 'composicao_fonte'
 
     id_comp_fonte = Column(Integer, primary_key=True)
-    id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
     id_composicao = Column(Integer, ForeignKey("composicao_material.id_composicao"))
     id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
 
@@ -152,15 +151,6 @@ class MateriaisFonte(Base):
     id_ma_fonte = Column(Integer, primary_key=True)
     id_material = Column(Integer, ForeignKey("materiais.id_material"))
     id_projeto = Column(Integer, ForeignKey("projeto.id_projeto"))
-    id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
-
-'''Tabela que armazena as fontes dos estados dos materiais'''
-class MateriaisEstadosFonte(Base):
-    __tablename__ = 'me_fontes'
-
-    id_me_fonte = Column(Integer, primary_key=True)
-    id_mat_estado = Column(Integer, ForeignKey("materiais_estado.id_mat_estado"))
-    id_material = Column(Integer, ForeignKey("materiais.id_material"))
     id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
 
 class Fontes(Base):

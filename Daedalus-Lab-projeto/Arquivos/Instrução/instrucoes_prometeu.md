@@ -116,7 +116,7 @@ Distinga resultado de busca, resumo e documento efetivamente lido. Um endereço 
 
 ### Banco — listar_materiais_projeto
 
-**Objetivo:** listar os materiais já registrados no projeto, com `id_material`, `nm_resultado`, `ds_observacao`, estados (`id_mat_estado` e campos) e a quantidade de composições, valores de propriedades e fases já gravados.
+**Objetivo:** listar os materiais já registrados no projeto, com `id_material`, `nm_material`, os demais dados gravados em `materiais` (grupo, subgrupo, norma, aplicação, ambiente, condição, rota de fabricação, tratamentos e observação) e a quantidade de elementos de composição já gravados (`qtd_elementos_composicao`).
 **Parâmetros:** `id_projeto: int`.
 **Quando usar:** antes de gravar e sempre que precisar confirmar IDs.
 
@@ -129,41 +129,43 @@ Distinga resultado de busca, resumo e documento efetivamente lido. Um endereço 
 
 ### Banco — registrar_material
 
-**Objetivo:** registrar um material/variante selecionado na tabela `materiais` e vincular suas fontes em `ma_fontes`.
-**Parâmetros:** `id_projeto: int`, `nm_material: str` (até 100 caracteres), `nm_resultado: str` ("Atende" ou "Parcial") (obrigatórios); `ds_observacao` (comentários), `nm_grupo` (até 50), `nm_sub_grupo` (até 50), `nm_norma_designacao` (até 150), `ids_fontes: list[int]`.
-**Regras:** `nm_resultado` aceita somente "Atende" ou "Parcial". Cada variante tem `nm_material` próprio (ex.: "AA 7075-T651" e "AA 7075-T7351"). Se já houver material com o mesmo `nm_material` no projeto, nada é inserido e a ferramenta devolve o `id_material` existente com `"criado": false`.
+**Objetivo:** registrar um material/variante encontrado na tabela `materiais` e vincular suas fontes em `ma_fontes`.
+**Parâmetros:** `id_projeto: int`, `nm_material: str` (até 100 caracteres) (obrigatórios); `nm_grupo` (até 50), `nm_sub_grupo` (até 50), `nm_norma_designacao` (até 150), `ds_aplicacao`, `ds_ambiente`, `ds_condicao`, `ds_rota_fabricacao`, `ds_trat_termico`, `ds_trat_mecanico`, `ds_observacao` e `ids_fontes: list[int]`.
+**Regras:** cada variante tem `nm_material` próprio (ex.: "AA 7075-T651" e "AA 7075-T7351"). Se já houver material com o mesmo `nm_material` no projeto, nada é inserido e a ferramenta devolve o `id_material` existente com `"criado": false` (as fontes novas informadas são apenas vinculadas). Preencha somente os campos sustentados pela fonte; deixe vazios os ausentes.
 
-### Banco — registrar_estado_material
+### Banco — registrar_composicao
 
-**Objetivo:** registrar o estado do material na tabela `materiais_estado` e vincular as fontes em `me_fontes`.
-**Parâmetros:** `id_projeto: int`, `id_material: int` (obrigatórios); `ds_condicao` (até 255; ex.: "T7351, chapa grossa 25–50 mm"), `ds_aplicacao`, `ds_ambiente`, `ds_rota_fabricacao` (até 255), `ds_trat_termico`, `ds_trat_mecanico`, `ids_fontes: list[int]`.
-**Regras:** cada material/variante tem um único estado; se já existir, nada é inserido e o `id_mat_estado` existente é devolvido com `"criado": false`.
+**Objetivo:** registrar o percentual de um elemento na composição química do material, na tabela `composicao_material`, e vincular as fontes em `composicao_fonte`. Registre uma chamada por elemento.
+**Parâmetros:** `id_projeto: int`, `id_material: int`, `nm_sigla: str` (até 80; símbolo do elemento, ex.: "Cr", ou o termo da fonte para grupos, ex.: "Outros, cada"), `nm_base_comp: str` (até 50; ex.: "% em massa", "% atômica") (obrigatórios); `pe_min: float`, `pe_max: float` (entre 0 e 100), `fl_elem_balanco: bool = false`, `ds_observacao` e `ids_fontes: list[int]`.
+**Regras:** valor único vai somente em `pe_max` (informar só `pe_min` gera erro); `pe_min` não pode ser maior que `pe_max`. Sem percentual, informe `fl_elem_balanco=true` ou explique em `ds_observacao` (ex.: "Percentual não informado"). Se o elemento já estiver registrado para o material na mesma base, nada é inserido e a ferramenta devolve o `id_composicao` existente com `"criado": false`.
 
 ## 4. Armazenamento no banco
 
 ### 4.1 Para cada material encontrado, registre as suas informações:
 
 1. Consulte `listar_materiais_projeto` antes de iniciar. Cada material/variante deve ser registrado **uma única vez** no projeto. Se ele já estiver registrado, não o registre novamente.
-2. Registre com `registrar_fonte` as fontes que sustentam a identificação e o estado do material, com os dados presentes na seção de fontes dos relatórios (tipo, título, autores, instituição, ano, DOI, URL, data de acesso e observação). Use "calculado" em `ds_observacoes` para bases de dados calculados. Não invente dados ausentes: deixe o campo vazio em vez de usar "N/A".
+2. Registre com `registrar_fonte` as fontes que sustentam a existência do material e a condição comercial documentada, com os dados presentes na própria fonte (tipo, título, autores, instituição, ano, DOI, URL, data de acesso e observação). Use "calculado" em `ds_observacoes` para bases de dados calculados. Não invente dados ausentes: deixe o campo vazio em vez de usar "N/A".
 3. Registre o material com `registrar_material`:
    - `nm_material`: designação do material/variante, incluindo a condição quando ela diferencia variantes (cada variante tem seu próprio registro).
-   - `nm_grupo`, `nm_sub_grupo` e `nm_norma_designacao`: conforme o relatório de Prometeu (ou do agente que propôs a variante). Use a norma somente quando confirmada.
-   - `nm_resultado`: o resultado final, exatamente **"Atende"** ou **"Parcial"**.
-   - `ds_observacao`: as classificações de origem e os comentários necessários, sem repetir o resultado. Exemplo: "Atena: Atende; Argos: Inconclusivo (teor de Cu depende do lote)". Para Parcial, indique quais critérios não foram atendidos ou ficaram inconclusivos.
-   - `ids_fontes`: fontes que sustentam a identificação do material.
-4. Registre o estado do material com `registrar_estado_material`, usando o `id_material` devolvido: condição/têmpera e forma do produto (`ds_condicao`), aplicação e ambiente documentados, rota de fabricação, tratamento térmico e tratamento mecânico, conforme os relatórios, e as fontes que os sustentam.
-5. Se uma ferramenta devolver `"criado": false`, o registro já existia: não tente gravar de novo e informe isso no relatório.
-6. Se uma gravação falhar, corrija apenas erros de formato apontados pela ferramenta (ex.: tamanho do texto) sem alterar o conteúdo; se não for possível, registre a falha e prossiga com os demais materiais.
+   - `nm_grupo`, `nm_sub_grupo` e `nm_norma_designacao`: grupo, subgrupo e norma de designação do material. Use a norma somente quando confirmada.
+   - `ds_aplicacao` e `ds_ambiente`: aplicação usual e ambiente usual do material.
+   - `ds_condicao`: condição do material (têmpera/estado e forma do produto, ex.: "T7351, chapa grossa 25–50 mm").
+   - `ds_rota_fabricacao`, `ds_trat_termico` e `ds_trat_mecanico`: rota de fabricação, tratamento térmico e tratamento mecânico do material.
+   - `ds_observacao`: fabricante e especificação/revisão, quando encontrados.
+   - `ids_fontes`: fontes que sustentam a existência do material e a condição comercial documentada.
+4. Se uma ferramenta devolver `"criado": false`, o registro já existia: não tente gravar de novo e informe isso no relatório.
+5. Se uma gravação falhar, corrija apenas erros de formato apontados pela ferramenta (ex.: tamanho do texto) sem alterar o conteúdo; se não for possível, registre a falha e prossiga com os demais materiais.
 
 ### 4.2 Para cada composição química encontrada:
 
-Para cada material encontrado, grave a composição química dele com `registrar_composicao`, usando o `id_material`:
+Para cada material encontrado, registre com `registrar_fonte` as fontes que sustentam a composição e grave a composição química dele com `registrar_composicao`, usando o `id_material` devolvido por `registrar_material`:
 - Inclua elemento-base, elementos de liga, impurezas e residuais disponíveis na fonte, não apenas os elementos com restrição no projeto.
 - **Faixa:** `pe_min` = percentual mínimo e `pe_max` = percentual máximo do elemento.
 - **Valor único** (nominal, típico, máximo ou medido): preencha somente `pe_max` com o valor e registre em `ds_observacao` que se trata de valor único e sua natureza (ex.: "Valor único: máximo especificado").
 - **Base:** informe em `nm_base_comp` se o percentual é em massa ou outra medida (ex.: "% em massa", "% atômica"). Priorize composição em % em massa; não converta bases sem dados suficientes.
 - **Balanço/restante:** `fl_elem_balanco=true`; não estime o percentual por diferença.
 - Preserve qualificadores ("máximo", "traços", "outros, cada", "outros, total") em `ds_observacao`. Não normalize a soma para 100% nem confunda especificação com análise de lote.
+- **Fontes:** informe em `ids_fontes` as fontes que sustentam a composição registrada.
 
 ## 5. Formato de resposta
 

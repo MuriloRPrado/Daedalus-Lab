@@ -23,5 +23,3 @@ def gerar_prompt_prometeu(id_projeto: int) -> str:
     ]
     return "\n\n".join(partes)
 
-teste = gerar_prompt_prometeu(1)
-print(teste)
