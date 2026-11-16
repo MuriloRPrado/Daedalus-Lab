@@ -18,7 +18,10 @@ from Rotinas.exportar_retorno import consultar_retorno_agente
 from Rotinas.firecrawl_api import buscar_fichas_tecnicas, buscar_web, ler_pagina
 from Rotinas.optimade_api import buscar_estruturas_calculadas, consultar_estrutura_calculada
 from Rotinas.oqmd_api import consultar_estabilidade_oqmd
-from Rotinas.registro_materiais import listar_materiais_projeto, registrar_composicao, registrar_fonte, registrar_material
+from Rotinas.registro_materiais import (
+    listar_elementos_projeto, listar_materiais_projeto, registrar_composicao, registrar_elemento, registrar_fonte,
+    registrar_material,
+)
 from Rotinas.wiki_api import buscar_material_wikidata, buscar_wikipedia, consultar_material_wikidata, ler_wikipedia
 #########################################################################
 
@@ -164,10 +167,11 @@ FERRAMENTAS_PROMETEU = [
 ]
 
 FERRAMENTAS_ATENA = [
-    RELATORIO_ANTERIOR, *WEB, *ARTIGOS, *WIKI,
+    *WEB, *ARTIGOS, *WIKI,
     buscar_materiais_mp, buscar_materiais_por_elementos_mp, consultar_material_mp,
     consultar_elasticidade_mp, consultar_estabilidade_mp,
     ferramenta(consultar_propriedades_aflow), ferramenta(consultar_estabilidade_oqmd),
+    FONTES_BANCO, ferramenta(listar_elementos_projeto), ferramenta(registrar_elemento),
 ]
 
 FERRAMENTAS_ARGOS = [RELATORIO_ANTERIOR, *WEB, *ARTIGOS, *WIKI, buscar_materiais_por_elementos_mp]

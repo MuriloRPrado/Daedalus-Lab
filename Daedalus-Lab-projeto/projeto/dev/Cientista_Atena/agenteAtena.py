@@ -2,7 +2,6 @@ from agents import Agent
 from Rotinas.configuracao import carregar_instrucao
 from Rotinas.execucao_agentes import executar_agente
 from Rotinas.ferramentas_agentes import FERRAMENTAS_ATENA
-from Rotinas.parecer_estruturado import ParecerAtena
 
 # Limite de turnos (chamadas ao modelo) por execução; o padrão do SDK (10) não comporta a pesquisa completa.
 MAX_TURNOS = 40
@@ -14,7 +13,6 @@ atena = Agent(
     instructions=instrucao,
     model="gpt-6.1-sol",
     tools=FERRAMENTAS_ATENA,
-    output_type=ParecerAtena,
 )
 
 def executar_pesquisa_atena(id_projeto: int, prompt: str) -> int:
