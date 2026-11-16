@@ -171,9 +171,9 @@ def _identificacao(projeto: dict) -> str:
 def _requisitos(requisitos: list[dict], restricoes: list[dict]) -> str:
     partes = ["### Requisitos de propriedades"]
     partes.append(_tabela(
-        ("Propriedade", "Operador", "Alvo", "Mínimo", "Máximo", "Unidade", "Obrigatório", "Observação"),
+        ("Propriedade", "Operador", "Alvo", "Mínimo", "Máximo", "Unidade", "Observação"),
         [(r["nm_propriedade"], r["ds_operador"], _num(r["vl_alvo"]), _num(r["vl_min"]), _num(r["vl_max"]),
-          r["ds_unidade"], "Sim" if r["fl_obrigatorio"] else "Não", r["ds_observacao"]) for r in requisitos],
+          r["ds_unidade"], r["ds_observacao"]) for r in requisitos],
     ) if requisitos else "Não há requisitos de propriedades registrados.")
     partes.append("### Restrições químicas")
     partes.append(_tabela(

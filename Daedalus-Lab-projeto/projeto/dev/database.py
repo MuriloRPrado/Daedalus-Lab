@@ -52,7 +52,6 @@ class ProjetoRequisitos(Base):
     nm_propriedade = Column(VARCHAR(150))
     ds_descricao = Column(Text)
     ds_unidade = Column(VARCHAR(30))
-    fl_obrigatorio = Column(Boolean)
 
 '''Tabela que armazena os elementos prioritários, restritos ou proibidos para a pesquisa'''
 class ElementoProjeto(Base):
@@ -205,3 +204,18 @@ class LogConsultaExterna(Base):
     vl_creditos = Column(Integer, server_default='0')
     ds_erro = Column(Text)
     dt_consulta = Column(TIMESTAMP(timezone=True), server_default=func.now())
+
+class PesquisaElementos(Base):
+    __tablename__ = 'pesquisa_elementos'
+
+    id_elemento = Column(Integer, primary_key=True)
+    id_projeto = Column(Integer, ForeignKey("projeto.id_projeto"))
+    nm_sigla_elemento = Column(VARCHAR(50))
+    ds_observacao = Column(Text)
+
+class ElementosFontes(Base):
+    __tablename__ = 'elementos_fontes'
+
+    id_ele_fonte = Column(Integer, primary_key=True)
+    id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
+    id_elemento = Column(Integer, ForeignKey("pesquisa_elementos.id_elemento"))

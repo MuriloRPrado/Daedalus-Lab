@@ -47,7 +47,6 @@ def requisitos_projeto(id_projeto: int) -> list[dict]:
                 ProjetoRequisitos.nm_propriedade,
                 ProjetoRequisitos.ds_descricao,
                 ProjetoRequisitos.ds_unidade,
-                ProjetoRequisitos.fl_obrigatorio,
             ).where(ProjetoRequisitos.id_projeto == id_projeto).order_by(ProjetoRequisitos.id_requisitos)
         ).mappings().all()
     return [dict(r) for r in registros]

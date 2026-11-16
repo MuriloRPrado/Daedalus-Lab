@@ -63,10 +63,10 @@ def reservar_projeto(id_projeto: int | None = None):
     """
     Seleciona o projeto a processar e já o marca como em andamento, na mesma transação.
     FOR UPDATE SKIP LOCKED impede que dois processos peguem o mesmo projeto.
-    Sem ID: o projeto SME aguardando mais antigo. Com ID: o projeto SME aguardando ou com erro (retomada).
+    Sem ID: o projeto NC aguardando mais antigo. Com ID: o projeto NC aguardando ou com erro (retomada).
     Devolve os dados do projeto antes da reserva (cd_status original) ou None.
     """
-    consulta = select(*colunas).where(Projeto.nm_tp_sigla == "SME")
+    consulta = select(*colunas).where(Projeto.nm_tp_sigla == "NC")
     if id_projeto is None:
         consulta = consulta.where(Projeto.cd_status == STATUS_AGUARDANDO).order_by(Projeto.id_projeto.asc()).limit(1)
     else:
