@@ -127,23 +127,32 @@ Distinga resultado de busca, resumo e documento efetivamente lido. Um endereço 
 **Duplicidade:** a mesma fonte (mesmo DOI; sem DOI, mesma URL; sem ambos, mesmo tipo e título) não é registrada duas vezes: a ferramenta devolve o `id_fonte` existente com `"criado": false`.
 **Regras:** preencha somente os dados presentes na fonte ou no relatório; deixe vazios os ausentes. Não invente autores, ano, DOI ou URL.
 
+### Banco — listar_elementos_projeto
+
+**Objetivo:** listar os elementos químicos já registrados no projeto (tabela `pesquisa_elementos`), com `id_elemento`, `nm_sigla_elemento`, `ds_observacao` e os `ids_fontes` vinculados.
+**Parâmetros:** `id_projeto: int` (o ID do projeto recebido no prompt).
+**Como usar:** consulte antes de registrar, para não repetir elementos.
+
+### Banco — registrar_elemento
+
+**Objetivo:** registrar um elemento químico pesquisado na tabela `pesquisa_elementos` e vincular as fontes que sustentam a informação na tabela `elementos_fontes`.
+**Parâmetros:** `id_projeto: int`; `nm_sigla_elemento: str` (símbolo do elemento, ex.: "Al", "Fe", "Mg"); `ds_observacao: str` (explicação de por que o elemento pode auxiliar a atingir os valores de propriedades informados); `ids_fontes: list[int]` (IDs devolvidos por `registrar_fonte`, ao menos um).
+**Duplicidade:** cada elemento é registrado uma única vez por projeto. Se o símbolo já estiver registrado, nada é inserido: a ferramenta devolve o `id_elemento` existente com `"criado": false` e apenas vincula as fontes novas.
+**Regras:** somente símbolos válidos da tabela periódica são aceitos. Registre a fonte com `registrar_fonte` antes de registrar o elemento; não registre elemento sem fonte.
+
 
 ## 4. Armazenamento no banco
 
 ### 4.1 Para cada elemento químico encontrado, registre as suas informações:
 
-1. Consulte `listar_materiais_projeto` antes de iniciar. Cada material/variante deve ser registrado **uma única vez** no projeto. Se ele já estiver registrado, não o registre novamente.
-2. Registre com `registrar_fonte` as fontes que sustentam a existência do material e a condição comercial documentada, com os dados presentes na própria fonte (tipo, título, autores, instituição, ano, DOI, URL, data de acesso e observação). Use "calculado" em `ds_observacoes` para bases de dados calculados. Não invente dados ausentes: deixe o campo vazio em vez de usar "N/A".
-3. Registre o material com `registrar_material`:
-   - `nm_material`: designação do material/variante, incluindo a condição quando ela diferencia variantes (cada variante tem seu próprio registro).
-   - `nm_grupo`, `nm_sub_grupo` e `nm_norma_designacao`: grupo, subgrupo e norma de designação do material. Use a norma somente quando confirmada.
-   - `ds_aplicacao` e `ds_ambiente`: aplicação usual e ambiente usual do material.
-   - `ds_condicao`: condição do material (têmpera/estado e forma do produto, ex.: "T7351, chapa grossa 25–50 mm").
-   - `ds_rota_fabricacao`, `ds_trat_termico` e `ds_trat_mecanico`: rota de fabricação, tratamento térmico e tratamento mecânico do material.
-   - `ds_observacao`: fabricante e especificação/revisão, quando encontrados.
-   - `ids_fontes`: fontes que sustentam a existência do material e a condição comercial documentada.
+1. Consulte `listar_elementos_projeto` antes de iniciar. Cada elemento químico deve ser registrado **uma única vez** no projeto. Se ele já estiver registrado, não o registre novamente.
+2. Registre com `registrar_fonte` as fontes que sustentam a informação de que o elemento contribui ou pode auxiliar para atingir os valores de propriedades informados, com os dados presentes na própria fonte (tipo, título, autores, instituição, ano, DOI, URL, data de acesso e observação). Use "calculado" em `ds_observacoes` para bases de dados calculados. Não invente dados ausentes: deixe o campo vazio em vez de usar "N/A".
+3. Registre o elemento com `registrar_elemento`:
+   - `nm_sigla_elemento`: sigla do elemento químico (ex.: "Al" para Alumínio, "Fe" para Ferro).
+   - `ds_observacao`: comentário explicando por que você acredita que o elemento pode auxiliar a atender os valores de propriedades informados pelo usuário, incluindo o mecanismo, o processamento necessário para ativar o efeito e os possíveis efeitos colaterais (trade-offs).
+   - `ids_fontes`: fontes que sustentam a informação registrada.
 4. Se uma ferramenta devolver `"criado": false`, o registro já existia: não tente gravar de novo e informe isso no relatório.
-5. Se uma gravação falhar, corrija apenas erros de formato apontados pela ferramenta (ex.: tamanho do texto) sem alterar o conteúdo; se não for possível, registre a falha e prossiga com os demais materiais.
+5. Se uma gravação falhar, corrija apenas erros de formato apontados pela ferramenta (ex.: tamanho do texto, símbolo inválido) sem alterar o conteúdo; se não for possível, registre a falha e prossiga com os demais elementos.
 
 ## 8. Formato da resposta
 

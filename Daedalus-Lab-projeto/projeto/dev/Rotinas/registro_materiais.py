@@ -1,10 +1,11 @@
 """Gravação dos materiais encontrados e das suas composições químicas no banco do projeto.
 
-Funções: registrar_fonte, registrar_material, registrar_composicao e listar_materiais_projeto.
+Funções: registrar_fonte, registrar_material, registrar_composicao, listar_materiais_projeto,
+registrar_elemento e listar_elementos_projeto.
 
-Cada função confere se o registro já existe antes de inserir (o mesmo material não é
+Cada função confere se o registro já existe antes de inserir (o mesmo material ou elemento não é
 gravado duas vezes no mesmo projeto) e vincula as fontes informadas nas tabelas
-ma_fontes e composicao_fonte.
+ma_fontes, composicao_fonte e elementos_fontes.
 """
 ######################### BIBLIOTECAS ###################################
 import re
@@ -13,7 +14,9 @@ from datetime import date
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from database import ComposicaoFonte, ComposicaoMaterial, Fontes, Materiais, MateriaisFonte, engine
+from database import (
+    ComposicaoFonte, ComposicaoMaterial, ElementosFontes, Fontes, Materiais, MateriaisFonte, PesquisaElementos, engine,
+)
 from Rotinas.cache_fontes import contexto_atual
 from Rotinas.fontes_firecrawl import normalizar_url
 #########################################################################
@@ -333,3 +336,94 @@ def listar_materiais_projeto(id_projeto: int) -> dict:
             for material in materiais
         ]
     return {"id_projeto": id_projeto, "materiais": resultado}
+
+
+SIMBOLOS_ELEMENTOS = frozenset("""
+H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr
+Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb
+Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf
+Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og
+""".split())
+
+
+def _simbolo_elemento(valor: str) -> str:
+    """Valida o símbolo químico e o devolve com a grafia padrão (ex.: "al" -> "Al")."""
+    simbolo = _texto(valor, "nm_sigla_elemento", 50, obrigatorio=True).capitalize()
+    if simbolo not in SIMBOLOS_ELEMENTOS:
+        raise ValueError(f"\"{valor}\" não é o símbolo de um elemento químico (ex.: \"Al\", \"Fe\", \"Mg\").")
+    return simbolo
+
+
+def registrar_elemento(
+    id_projeto: int,
+    nm_sigla_elemento: str,
+    ds_observacao: str,
+    ids_fontes: list[int],
+) -> dict:
+    """Registra um elemento químico pesquisado na tabela "pesquisa_elementos" e vincula suas fontes em "elementos_fontes".
+
+    Cada elemento é gravado uma única vez por projeto: se o mesmo símbolo já estiver registrado no
+    projeto, nada é inserido e o id existente é devolvido (as fontes novas são apenas vinculadas).
+
+    Args:
+        id_projeto: ID do projeto.
+        nm_sigla_elemento: Símbolo do elemento químico (ex.: "Al", "Fe", "Mg").
+        ds_observacao: Explicação de por que o elemento pode auxiliar a atingir as propriedades pedidas (mecanismo, processamento necessário e efeitos colaterais).
+        ids_fontes: IDs devolvidos por registrar_fonte que sustentam a informação (ao menos um).
+    """
+    nm_sigla_elemento = _simbolo_elemento(nm_sigla_elemento)
+    ds_observacao = _texto(ds_observacao, "ds_observacao", obrigatorio=True)
+    if not ids_fontes:
+        raise ValueError("Informe ao menos um id_fonte em ids_fontes. Registre a fonte antes com registrar_fonte.")
+
+    with Session(engine) as session:
+        with session.begin():
+            _bloquear_projeto(session, id_projeto)
+            id_elemento = session.execute(
+                select(PesquisaElementos.id_elemento).where(
+                    PesquisaElementos.id_projeto == id_projeto,
+                    func.lower(PesquisaElementos.nm_sigla_elemento) == nm_sigla_elemento.lower(),
+                ).order_by(PesquisaElementos.id_elemento).limit(1)
+            ).scalar()
+            criado = id_elemento is None
+            if criado:
+                elemento = PesquisaElementos(
+                    id_projeto=id_projeto, nm_sigla_elemento=nm_sigla_elemento, ds_observacao=ds_observacao,
+                )
+                session.add(elemento)
+                session.flush()
+                id_elemento = elemento.id_elemento
+            fontes = _vincular_fontes(session, ElementosFontes, ids_fontes, id_elemento=id_elemento)
+    retorno = {"id_elemento": id_elemento, "nm_sigla_elemento": nm_sigla_elemento, "criado": criado, "fontes_vinculadas": fontes}
+    if not criado:
+        retorno["aviso"] = "Elemento já registrado neste projeto; nada foi inserido (somente as fontes novas foram vinculadas)."
+    return retorno
+
+
+def listar_elementos_projeto(id_projeto: int) -> dict:
+    """Lista os elementos químicos já registrados no projeto, com a observação e os IDs das fontes vinculadas.
+
+    Use antes de registrar, para não repetir elementos.
+
+    Args:
+        id_projeto: ID do projeto.
+    """
+    _validar_projeto_do_agente(id_projeto)
+    with Session(engine) as session:
+        elementos = session.execute(
+            select(PesquisaElementos).where(PesquisaElementos.id_projeto == id_projeto).order_by(PesquisaElementos.id_elemento)
+        ).scalars().all()
+        resultado = [
+            {
+                "id_elemento": elemento.id_elemento,
+                "nm_sigla_elemento": elemento.nm_sigla_elemento,
+                "ds_observacao": elemento.ds_observacao,
+                "ids_fontes": session.execute(
+                    select(ElementosFontes.id_fonte)
+                    .where(ElementosFontes.id_elemento == elemento.id_elemento)
+                    .order_by(ElementosFontes.id_fonte)
+                ).scalars().all(),
+            }
+            for elemento in elementos
+        ]
+    return {"id_projeto": id_projeto, "elementos": resultado}

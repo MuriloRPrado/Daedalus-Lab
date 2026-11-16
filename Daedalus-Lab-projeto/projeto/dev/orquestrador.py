@@ -10,6 +10,8 @@ from database import engine, Projeto, RetornoCientista
 
 from Cientista_Prometeu.agentePrometeu import executar_pesquisa_prometeu
 from Cientista_Prometeu.promptPrometeu import gerar_prompt_prometeu
+from Cientista_Atena.agenteAtena import executar_pesquisa_atena
+from Cientista_Atena.promptAtena import gerar_prompt_atena
 #########################################################################
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -19,6 +21,7 @@ STATUS_AGUARDANDO = 10
 STATUS_ERRO = 11
 STATUS_EM_ANDAMENTO = 21
 STATUS_PROMETEU_OK = 23
+STATUS_ATENA_OK = 25
 
 colunas = (
     Projeto.id_projeto,
@@ -91,7 +94,7 @@ def motivo_indisponivel(id_projeto: int) -> str:
         existe = session.execute(select(Projeto.id_projeto).where(Projeto.id_projeto == id_projeto)).scalar_one_or_none()
     if existe is None:
         return "Não existe projeto com o ID informado, favor verificar."
-    return "O projeto do ID informado não é SME, já finalizou a pesquisa ou está em execução."
+    return "O projeto do ID informado não é NC, já finalizou a pesquisa ou está em execução."
 
 
 def rodar_agente(
@@ -160,10 +163,16 @@ def rodar_prometeu(projeto, id_reaproveitado: int | None = None) -> int:
         st_final=STATUS_PROMETEU_OK, id_reaproveitado=id_reaproveitado)
 
 
+def rodar_atena(projeto, id_reaproveitado: int | None = None) -> int:
+    return rodar_agente(
+        projeto, "Atena", gerar_prompt_atena, executar_pesquisa_atena,
+        st_final=STATUS_ATENA_OK, id_reaproveitado=id_reaproveitado)
+
+
 def iniciar(id_projeto: int | None = None):
     """
-    Processa um projeto (no momento, somente com o agente Prometeu). Com o ID de um projeto com erro,
-    retoma a pesquisa: se o Prometeu já gravou um retorno ainda não utilizado, ele não roda de novo.
+    Processa um projeto (no momento, somente com o agente Atena; o Prometeu está desligado). Com o ID de um
+    projeto com erro, retoma a pesquisa: se a Atena já gravou um retorno ainda não utilizado, ela não roda de novo.
     """
     if id_projeto is not None and not isinstance(id_projeto, int):
         raise TypeError("O ID do projeto deve ser um número, favor verificar.")
@@ -184,9 +193,11 @@ def iniciar(id_projeto: int | None = None):
             return None
         return retorno_pendente(projeto.id_projeto, nm_agente)
 
-    id_ret_prometeu = rodar_prometeu(projeto, reaproveitar("Prometeu"))
+    # Prometeu desligado neste teste: somente a Atena é executada.
+    # id_ret_prometeu = rodar_prometeu(projeto, reaproveitar("Prometeu"))
+    id_ret_atena = rodar_atena(projeto, reaproveitar("Atena"))
 
-    return projeto.id_projeto, id_ret_prometeu
+    return projeto.id_projeto, id_ret_atena
 
 
 def processar_fila():
@@ -209,7 +220,7 @@ def processar_fila():
             print("Fila vazia, encerrando.")
             break
 
-        print(f"Concluído: projeto {resultado[0]}, retorno do Prometeu {resultado[1]}")
+        print(f"Concluído: projeto {resultado[0]}, retorno da Atena {resultado[1]}")
 
 
 if __name__ == "__main__":
@@ -217,6 +228,6 @@ if __name__ == "__main__":
     #   python orquestrador.py        |  python orquestrador.py 15
     if len(sys.argv) > 1:
         resultado = iniciar(int(sys.argv[1]))
-        print(f"Concluído: projeto {resultado[0]}, retorno do Prometeu {resultado[1]}")
+        print(f"Concluído: projeto {resultado[0]}, retorno da Atena {resultado[1]}")
     else:
         processar_fila()
