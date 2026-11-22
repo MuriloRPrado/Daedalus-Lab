@@ -93,8 +93,12 @@ def gerar_composicoes(elementos: list[str], n: int = 3, semente: int | None = No
     return [{vocab[j]: float(arred[i, j]) for j in np.argsort(-arred[i]) if arred[i, j] > 0} for i in escolha]
 
 
-def ligas_mais_proximas(composicao: dict[str, float], quantidade: int = 3) -> list[dict]:
+def ligas_mais_proximas(composicao: dict[str, float], quantidade: int = 3,
+                        tolerancia_pp: float | None = None) -> list[dict]:
     """Ligas da base de treino mais parecidas com a composição (% em massa).
+
+    Com tolerancia_pp, uma liga com todos os elementos a até tolerancia_pp vem primeiro, mesmo que outra
+    tenha distância total menor.
 
     distancia_pp = metade da soma das diferenças absolutas = massa (pp) que precisa mudar de elemento.
     """
@@ -103,8 +107,14 @@ def ligas_mais_proximas(composicao: dict[str, float], quantidade: int = 3) -> li
     alvo = np.array([float(composicao.get(e, 0.0)) for e in vocab])
     dist = 0.5 * np.abs(ref - alvo).sum(1)
     dif_max = np.abs(ref - alvo).max(1)
+    ordem = list(np.argsort(dist, kind="stable")[:quantidade])
+    if tolerancia_pp is not None:
+        iguais = np.flatnonzero(dif_max <= tolerancia_pp)
+        if iguais.size and ordem[0] not in iguais:
+            igual = int(iguais[np.argmin(dist[iguais])])
+            ordem = [igual, *[i for i in ordem if i != igual]][:quantidade]
     saida = []
-    for i in np.argsort(dist, kind="stable")[:quantidade]:
+    for i in ordem:
         linha = df.iloc[i]
         saida.append({
             "id_base": int(linha["id"]),

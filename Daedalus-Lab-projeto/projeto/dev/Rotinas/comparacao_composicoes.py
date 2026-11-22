@@ -58,7 +58,7 @@ def analisar_base(id_projeto: int) -> list[dict]:
         raise RuntimeError(f"O projeto {id_projeto} não tem composições geradas pelo VAE para comparar.")
     analise = []
     for c in composicoes:
-        proximas = gerador.ligas_mais_proximas(c["composicao"], 3)
+        proximas = gerador.ligas_mais_proximas(c["composicao"], 3, TOLERANCIA_PP)
         melhor = proximas[0]
         resultado = _resultado(melhor["distancia_pp"], melhor["maior_diferenca_pp"] <= TOLERANCIA_PP)
         analise.append({**c, "ligas_proximas_base": proximas,
