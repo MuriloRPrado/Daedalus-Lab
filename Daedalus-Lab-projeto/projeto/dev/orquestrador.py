@@ -15,6 +15,7 @@ from Cientista_Atena.promptAtena import gerar_prompt_atena
 from Cientista_Caliope.agenteCaliopeComparacao import caliope_comparacao, executar_caliope_comparacao
 from Cientista_Caliope.promptCaliopeComparacao import gerar_prompt_caliope_comparacao
 from Rotinas.composicoes_vae import NM_ROTINA as NM_ROTINA_VAE, executar_rotina_vae
+from Rotinas.exportar_retorno import gerar_arquivo_retorno_cientistas
 from Rotinas.retorno_cientistas import marcar_retornos_utilizados
 #########################################################################
 
@@ -184,11 +185,15 @@ def rodar_vae(projeto, id_reaproveitado: int | None = None) -> int:
 
 def rodar_caliope_comparacao(projeto, id_ret_atena: int, id_ret_vae: int, id_reaproveitado: int | None = None) -> int:
     """Compara as composições do VAE com materiais reais e gera o relatório em Arquivos/Retornos."""
+    def finalizar():
+        # Na retomada, o retorno já estava gravado, mas o arquivo pode não ter sido gerado.
+        if id_reaproveitado is not None:
+            gerar_arquivo_retorno_cientistas(id_reaproveitado, projeto.id_projeto, caliope_comparacao.name)
+        marcar_retornos_utilizados(projeto.id_projeto, [(id_ret_atena, "Atena"), (id_ret_vae, NM_ROTINA_VAE)])
+
     return rodar_agente(
         projeto, caliope_comparacao.name, gerar_prompt_caliope_comparacao, executar_caliope_comparacao,
-        st_final=STATUS_CALIOPE_OK, id_reaproveitado=id_reaproveitado,
-        apos_retorno=lambda: marcar_retornos_utilizados(
-            projeto.id_projeto, [(id_ret_atena, "Atena"), (id_ret_vae, NM_ROTINA_VAE)]))
+        st_final=STATUS_CALIOPE_OK, id_reaproveitado=id_reaproveitado, apos_retorno=finalizar)
 
 
 def iniciar(id_projeto: int | None = None):
