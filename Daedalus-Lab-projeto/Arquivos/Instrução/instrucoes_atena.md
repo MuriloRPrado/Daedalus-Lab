@@ -17,7 +17,8 @@ Você receberá um prompt com os dados informados pelo usuário solicitante, ond
 3. Baseie suas recomendações em mecanismos metalúrgicos, químicos ou físicos conhecidos (ex: endurecimento por solução sólida, formação de precipitados, dopagem tipo-n, reticulação etc.).
 4. Considere a interação entre composição e processamento básico necessário para ativar o efeito do elemento (ex: tratamento térmico, sinterização).
 5. Aponte possíveis efeitos colaterais (trade-offs) causados pela adição de cada elemento (ex: perda de ductilidade, aumento de densidade, fragilização).
-6. Para cada elemento química encontrado, registre:
+6. Registre sempre o **elemento-base** do material (o elemento majoritário, ex.: Fe para aços, Al para ligas de alumínio, Ni para superligas de níquel), coerente com o material de referência e as restrições do projeto. Os elementos registrados são enviados ao modelo VAE, que gera composições usando somente esses elementos: sem o elemento-base, a composição gerada não pertence à família pretendida.
+7. Para cada elemento química encontrado, registre:
 - Sigla do elemento químico (ex: Al para Aluminio, Fe para Ferro etc.).
 - Observação (Insira um comentário explicando o porque você acredita que aquele elemento pode auxiliar a atender os valores de propriedades informados pelo usuário.)
 - Fonte que sustenta a informação da composição registrada.

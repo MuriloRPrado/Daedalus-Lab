@@ -12,6 +12,10 @@ from Cientista_Prometeu.agentePrometeu import executar_pesquisa_prometeu
 from Cientista_Prometeu.promptPrometeu import gerar_prompt_prometeu
 from Cientista_Atena.agenteAtena import executar_pesquisa_atena
 from Cientista_Atena.promptAtena import gerar_prompt_atena
+from Cientista_Caliope.agenteCaliopeComparacao import caliope_comparacao, executar_caliope_comparacao
+from Cientista_Caliope.promptCaliopeComparacao import gerar_prompt_caliope_comparacao
+from Rotinas.composicoes_vae import NM_ROTINA as NM_ROTINA_VAE, executar_rotina_vae
+from Rotinas.retorno_cientistas import marcar_retornos_utilizados
 #########################################################################
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -19,9 +23,11 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 # Códigos da tabela status
 STATUS_AGUARDANDO = 10
 STATUS_ERRO = 11
+STATUS_CALIOPE_OK = 12
 STATUS_EM_ANDAMENTO = 21
 STATUS_PROMETEU_OK = 23
 STATUS_ATENA_OK = 25
+STATUS_VAE_OK = 26
 
 colunas = (
     Projeto.id_projeto,
@@ -169,10 +175,27 @@ def rodar_atena(projeto, id_reaproveitado: int | None = None) -> int:
         st_final=STATUS_ATENA_OK, id_reaproveitado=id_reaproveitado)
 
 
+def rodar_vae(projeto, id_reaproveitado: int | None = None) -> int:
+    """Organiza os elementos da Atena, gera as composições com o VAE e grava em composicao_material."""
+    return rodar_agente(
+        projeto, NM_ROTINA_VAE, lambda _id: "", executar_rotina_vae,
+        st_final=STATUS_VAE_OK, id_reaproveitado=id_reaproveitado)
+
+
+def rodar_caliope_comparacao(projeto, id_ret_atena: int, id_ret_vae: int, id_reaproveitado: int | None = None) -> int:
+    """Compara as composições do VAE com materiais reais e gera o relatório em Arquivos/Retornos."""
+    return rodar_agente(
+        projeto, caliope_comparacao.name, gerar_prompt_caliope_comparacao, executar_caliope_comparacao,
+        st_final=STATUS_CALIOPE_OK, id_reaproveitado=id_reaproveitado,
+        apos_retorno=lambda: marcar_retornos_utilizados(
+            projeto.id_projeto, [(id_ret_atena, "Atena"), (id_ret_vae, NM_ROTINA_VAE)]))
+
+
 def iniciar(id_projeto: int | None = None):
     """
-    Processa um projeto (no momento, somente com o agente Atena; o Prometeu está desligado). Com o ID de um
-    projeto com erro, retoma a pesquisa: se a Atena já gravou um retorno ainda não utilizado, ela não roda de novo.
+    Processa um projeto: Atena -> Rotina VAE -> Calíope (Comparação); o Prometeu está desligado.
+    Com o ID de um projeto com erro, retoma a pesquisa: as etapas que já gravaram um retorno ainda não
+    utilizado não rodam de novo.
     """
     if id_projeto is not None and not isinstance(id_projeto, int):
         raise TypeError("O ID do projeto deve ser um número, favor verificar.")
@@ -193,11 +216,14 @@ def iniciar(id_projeto: int | None = None):
             return None
         return retorno_pendente(projeto.id_projeto, nm_agente)
 
-    # Prometeu desligado neste teste: somente a Atena é executada.
+    # Prometeu desligado neste teste.
     # id_ret_prometeu = rodar_prometeu(projeto, reaproveitar("Prometeu"))
     id_ret_atena = rodar_atena(projeto, reaproveitar("Atena"))
+    id_ret_vae = rodar_vae(projeto, reaproveitar(NM_ROTINA_VAE))
+    id_ret_caliope = rodar_caliope_comparacao(
+        projeto, id_ret_atena, id_ret_vae, reaproveitar(caliope_comparacao.name))
 
-    return projeto.id_projeto, id_ret_atena
+    return projeto.id_projeto, id_ret_caliope
 
 
 def processar_fila():
@@ -220,7 +246,7 @@ def processar_fila():
             print("Fila vazia, encerrando.")
             break
 
-        print(f"Concluído: projeto {resultado[0]}, retorno da Atena {resultado[1]}")
+        print(f"Concluído: projeto {resultado[0]}, relatório da Calíope {resultado[1]}")
 
 
 if __name__ == "__main__":
@@ -228,6 +254,6 @@ if __name__ == "__main__":
     #   python orquestrador.py        |  python orquestrador.py 15
     if len(sys.argv) > 1:
         resultado = iniciar(int(sys.argv[1]))
-        print(f"Concluído: projeto {resultado[0]}, retorno da Atena {resultado[1]}")
+        print(f"Concluído: projeto {resultado[0]}, relatório da Calíope {resultado[1]}")
     else:
         processar_fila()
