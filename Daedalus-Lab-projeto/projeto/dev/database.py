@@ -135,23 +135,6 @@ class ComposicaoMaterial(Base):
     ds_observacao = Column(Text)
     nm_sigla = Column(VARCHAR(80))
 
-'''Tabela que armazena as fontes das composições dos materiais'''
-class ComposicaoFonte(Base):
-    __tablename__ = 'composicao_fonte'
-
-    id_comp_fonte = Column(Integer, primary_key=True)
-    id_composicao = Column(Integer, ForeignKey("composicao_material.id_composicao"))
-    id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
-
-'''Tabela que armazena as fontes dos materiais'''
-class MateriaisFonte(Base):
-    __tablename__ = 'ma_fontes'
-
-    id_ma_fonte = Column(Integer, primary_key=True)
-    id_material = Column(Integer, ForeignKey("materiais.id_material"))
-    id_projeto = Column(Integer, ForeignKey("projeto.id_projeto"))
-    id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
-
 class Fontes(Base):
     __tablename__ = 'fontes'
 

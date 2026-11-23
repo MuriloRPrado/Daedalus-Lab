@@ -11,6 +11,7 @@ services:
       - "5432:5432"                             # Porta para acessa o banco
     volumes:
       - pgdata:/var/lib/postgresql/data
+      - ./criar_banco.sql:/docker-entrypoint-initdb.d/01_criar_banco.sql:ro   # só roda com o volume vazio
 
 volumes:
   pgdata:

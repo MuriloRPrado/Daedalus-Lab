@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 """Cache das páginas/PDFs lidos e log das consultas externas.
 
 Usa as tabelas fonte_consultada e log_consulta_externa
-(ver Rotinas/tabelas_fontes_consultadas.sql).
+(ver projeto/container/criar_banco.sql).
 Se o banco não estiver acessível, as consultas seguem sem cache e sem log:
 o erro é apenas registrado no logging, para não interromper o agente.
 """
