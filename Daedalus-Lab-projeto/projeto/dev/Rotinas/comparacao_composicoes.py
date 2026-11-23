@@ -17,7 +17,7 @@ from VAE import gerador
 #########################################################################
 
 LIMITE_PROXIMO_PP = 10.0
-TOLERANCIA_PP = 0.01  # precisão dos percentuais gerados (2 casas)
+TOLERANCIA_PP = 0.5  # "igual": todos os elementos a até 0,5 pp do material real
 EXISTE, PROXIMO, NAO_EXISTE = "Existe", "Próximo", "Não existe"
 
 
@@ -42,7 +42,11 @@ class ComparacaoWeb(BaseModel):
 
 class SaidaComparacao(BaseModel):
     comparacoes: list[ComparacaoWeb]
-    observacoes_gerais: str = ""
+
+
+class TextosRelatorio(BaseModel):
+    introducao: str = Field(description="Texto da seção Introdução, sem título, em Markdown simples.")
+    conclusao: str = Field(description="Texto da seção Conclusão, sem título, em Markdown simples.")
 
 
 def _resultado(distancia: float, existe: bool) -> str:
@@ -105,9 +109,11 @@ def _texto_faixa(e: ElementoReferencia | None) -> str:
     }.get(e.tp_valor, f"{e.pe_min if e.pe_min is not None else 0:g} – {e.pe_max if e.pe_max is not None else 100:g}")
 
 
-def _nome_base(liga: dict) -> str:
-    nome = f"{liga['nome']} " if liga["nome"] else ""
-    return f"{nome}[{liga['familia']}, fonte {liga['fonte']}; {liga['referencia']}]".strip()
+def _referencia_base(liga: dict) -> str:
+    ref = liga["referencia"].strip().removeprefix("doi:").strip()
+    if ref.startswith("10.") and " " not in ref:
+        ref = f"https://doi.org/{ref}"
+    return f"base de ligas do VAE, conjunto {liga['fonte']} (VAE/FONTES.md); referência original: {ref or 'não informada'}"
 
 
 def _tabela_base(comp: dict[str, float], liga: dict) -> list[str]:
@@ -126,73 +132,93 @@ def _tabela_web(comp: dict[str, float], ref: list[ElementoReferencia], desvios: 
     return linhas
 
 
-def montar_relatorio(id_projeto: int, analise: list[dict], saida: SaidaComparacao | None) -> str:
-    """Relatório final em Markdown: resumo, detalhe por composição, critérios e limitações."""
+def consolidar(analise: list[dict], saida: SaidaComparacao | None) -> list[dict]:
+    """Por composição: resultado (Existe/Próximo/Não existe) e os materiais reais iguais (até TOLERANCIA_PP)."""
     web = {_sigla(c.nm_composicao): c for c in (saida.comparacoes if saida else [])}
-    modelo = gerador.descricao_modelo()
-    resumo, detalhes, fontes = [], [], []
+    consolidado = []
     for a in analise:
-        comp, nome = a["composicao"], a["nm_material"]
-        texto_comp = ", ".join(f"{e} {v:.2f}" for e, v in comp.items())
-        detalhes += ["", f"## {nome}", "", f"**Composição gerada (% em massa):** {texto_comp}", ""]
+        comp, iguais, observacao_web = a["composicao"], [], None
         if a["resultado_base"] is not None:
-            liga = a["ligas_proximas_base"][0]
-            resultado, distancia, origem = a["resultado_base"], f"{liga['distancia_pp']:.2f} pp", "Base do VAE"
-            material = _nome_base(liga)
-            detalhes += [f"**Resultado:** {resultado}", f"**Material comparado:** {material}",
-                         f"**Distância:** {distancia} (massa que precisa mudar de elemento)", ""]
-            detalhes += _tabela_base(comp, liga)
-            outras = a["ligas_proximas_base"][1:]
-            if outras:
-                detalhes += ["", "Outras ligas próximas na base:"]
-                detalhes += [f"- {_nome_base(o)}: {o['distancia_pp']:.2f} pp" for o in outras]
+            resultado = a["resultado_base"]
+            for liga in a["ligas_proximas_base"]:
+                if liga["maior_diferenca_pp"] <= TOLERANCIA_PP:
+                    iguais.append({"material": liga["nome"] or liga["familia"],
+                                   "familia": liga["familia"], "origem": "Base de ligas do VAE",
+                                   "fonte": _referencia_base(liga), "tabela": _tabela_base(comp, liga)})
         else:
-            c = web.get(_sigla(nome))
-            melhor_base = a["ligas_proximas_base"][0]
-            nota_base = f"Na base do VAE, a liga mais próxima está a {melhor_base['distancia_pp']:.2f} pp ({_nome_base(melhor_base)})."
-            if c is None or not c.nm_material or not c.composicao_material:
-                resultado, material, distancia, origem = NAO_EXISTE, "—", "—", "Base do VAE + web" if saida else "Base do VAE"
-                detalhes += [f"**Resultado:** {resultado}", nota_base,
-                             "Na pesquisa web, nenhum material real com composição documentada foi encontrado."
-                             if saida else "A pesquisa web não foi executada."]
-                if c is not None and c.ds_observacao:
-                    detalhes.append(f"Observação da Calíope: {c.ds_observacao}")
-            else:
+            c = web.get(_sigla(a["nm_material"]))
+            resultado = NAO_EXISTE
+            observacao_web = (c.ds_observacao.strip() or None) if c is not None else (
+                "Pesquisa web não executada ou sem retorno para esta composição.")
+            if c is not None and c.nm_material and c.composicao_material:
                 desvios = desvio_faixas(comp, c.composicao_material)
                 total = round(sum(desvios.values()), 2)
-                resultado = EXISTE if total <= TOLERANCIA_PP else _resultado(total, False)
-                material, distancia, origem = c.nm_material, f"{total:.2f} pp fora das faixas", "Web"
-                fonte = " — ".join(t for t in (c.nm_titulo_fonte, c.nm_url_fonte) if t) or "fonte não informada"
-                fontes.append(f"- {c.nm_material}: {fonte}" + (f" (id_fonte {c.id_fonte})" if c.id_fonte else ""))
-                detalhes += [f"**Resultado:** {resultado}", f"**Material comparado:** {material}", f"**Fonte:** {fonte}",
-                             f"**Distância:** {distancia}", ""]
-                detalhes += _tabela_web(comp, c.composicao_material, desvios)
-                detalhes += ["", nota_base]
-                if c.ds_observacao:
-                    detalhes.append(f"Observação da Calíope: {c.ds_observacao}")
-        resumo.append(f"| {nome} | {resultado} | {material} | {distancia} | {origem} |")
+                resultado = EXISTE if max(desvios.values(), default=0.0) <= TOLERANCIA_PP else _resultado(total, False)
+                if resultado == EXISTE:
+                    fonte = " — ".join(t for t in (c.nm_titulo_fonte, c.nm_url_fonte) if t) or "fonte não informada"
+                    iguais.append({"material": c.nm_material, "familia": None, "origem": "Pesquisa web",
+                                   "fonte": fonte, "tabela": _tabela_web(comp, c.composicao_material, desvios)})
+        consolidado.append({**a, "resultado": resultado, "iguais": iguais, "observacao_pesquisa_web": observacao_web,
+                            "distancia_base_pp": a["ligas_proximas_base"][0]["distancia_pp"]})
+    return consolidado
 
-    partes = [
-        "# Calíope — Comparação das composições geradas com materiais reais", "",
-        f"Projeto {id_projeto} · gerado em {datetime.now():%d/%m/%Y %H:%M} · modelo {modelo['arquivo']} "
-        f"(época {modelo['epoca']})", "",
-        "## Resumo", "", "| Composição | Resultado | Material comparado | Distância | Origem |", "|---|---|---|---|---|",
-        *resumo, *detalhes, "",
-        "## Critérios", "",
-        f"- **Existe:** todos os elementos coincidem com uma liga real da base (diferença ≤ {TOLERANCIA_PP} pp) "
-        "ou ficam dentro das faixas documentadas do material encontrado na web.",
-        f"- **Próximo:** até {LIMITE_PROXIMO_PP:g} pp. Na base, a distância é a massa que precisa mudar de elemento "
-        "(metade da soma das diferenças); na web, é a soma do quanto cada elemento fica fora da faixa.",
-        f"- **Não existe:** acima de {LIMITE_PROXIMO_PP:g} pp na base e sem material documentado na web dentro do limite.",
-        "- A base do VAE é consultada primeiro; a web só é pesquisada para as composições sem correspondência na base.",
-    ]
-    if fontes:
-        partes += ["", "## Fontes (web)", "", *fontes]
-    if saida and saida.observacoes_gerais.strip():
-        partes += ["", "## Observações da Calíope", "", saida.observacoes_gerais.strip()]
-    partes += ["", "## Limitações", "",
-               "- As composições são candidatas estatísticas do VAE. Proximidade de composição não comprova "
-               "estabilidade, fabricabilidade nem propriedades.",
-               "- A base do VAE reúne composições medidas ou normatizadas publicadas (fontes em VAE/FONTES.md); "
-               "o nome da liga é o da fonte original e pode ser só um rótulo de amostra."]
+
+def _pp(valor: float) -> str:
+    return f"{valor:g}".replace(".", ",")
+
+
+def _tabela_composicao(comp: dict[str, float]) -> list[str]:
+    return ["| Elemento | % em massa |", "|---|---|", *[f"| {e} | {v:.2f} |" for e, v in comp.items()]]
+
+
+def _secao_fases(fases: list[dict]) -> list[str]:
+    if not fases:
+        return ["**Fases previstas (calculadas):** não calculadas para esta composição."]
+    f0 = fases[0]
+    linhas = [f"**Fases previstas (calculadas)** — sistema {f0['ds_sistema_quimico']}, Materials Project "
+              f"(banco {f0['ds_versao_base']}), envoltória convexa a 0 K:", "",
+              "| Fase | ID Materials Project | Grupo espacial | Sistema cristalino | % atômica | % em massa |",
+              "|---|---|---|---|---|---|"]
+    for f in fases:
+        id_mp = f["cd_material_mp"]
+        link = f"[{id_mp}](https://next-gen.materialsproject.org/materials/{id_mp})" if id_mp else "—"
+        linhas.append(f"| {f['nm_fase']} | {link} | {f['nm_grupo_espacial'] or '—'} | "
+                      f"{f['nm_sistema_cristalino'] or '—'} | {f['pe_fracao_atomica']:.2f} | {f['pe_fracao_massa']:.2f} |")
+    if f0.get("ds_observacao"):
+        linhas += ["", f"_{f0['ds_observacao']}_"]
+    return linhas
+
+
+def montar_relatorio(id_projeto: int, consolidado: list[dict], fases: dict[int, list[dict]],
+                     textos: TextosRelatorio) -> str:
+    """Relatório final: Título, Introdução, Resultados, Comparação (só se houver material igual) e Conclusão."""
+    modelo = gerador.descricao_modelo()
+    partes = ["# Geração de Composições Químicas para Materiais Metálicos", "",
+              f"_Projeto {id_projeto} · gerado em {datetime.now():%d/%m/%Y %H:%M}_", "",
+              "## Introdução", "", textos.introducao.strip(), "",
+              "## Resultados", "",
+              "> As composições abaixo foram geradas por um modelo estatístico (VAE) e as fases foram **calculadas** "
+              "(DFT, Materials Project, 0 K). São candidatas teóricas: composição e fases **precisam de validação "
+              "empírica** (fabricação, caracterização microestrutural e ensaios)."]
+    for c in consolidado:
+        partes += ["", f"### {c['nm_material']}", "", "**Composição química gerada:**", "",
+                   *_tabela_composicao(c["composicao"]), "", *_secao_fases(fases.get(c["id_material"], []))]
+    partes += ["", "Fontes:",
+               f"- Composições: modelo VAE do Daedalus Lab ({modelo['arquivo']}, época {modelo['epoca']}), treinado "
+               "com composições publicadas de ligas reais (conjuntos e DOIs em VAE/FONTES.md).",
+               "- Fases: Materials Project (https://next-gen.materialsproject.org), dados sob licença CC BY 4.0; "
+               "cálculo da envoltória convexa com pymatgen."]
+
+    com_iguais = [c for c in consolidado if c["iguais"]]
+    if com_iguais:
+        partes += ["", "## Comparação", "",
+                   f"Materiais reais documentados com a mesma composição (todos os elementos a até {_pp(TOLERANCIA_PP)} pp "
+                   "ou dentro das faixas da fonte):"]
+        for c in com_iguais:
+            for m in c["iguais"]:
+                titulo = m["material"] + (f" ({m['familia']})" if m["familia"] and m["familia"] != m["material"] else "")
+                partes += ["", f"### {c['nm_material']} — {titulo}", "", f"- Origem: {m['origem']}",
+                           f"- Fonte: {m['fonte']}", "", *m["tabela"]]
+
+    partes += ["", "## Conclusão", "", textos.conclusao.strip()]
     return "\n".join(partes)

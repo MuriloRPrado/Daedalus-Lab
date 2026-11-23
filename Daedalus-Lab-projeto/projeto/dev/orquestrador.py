@@ -8,13 +8,12 @@ from sqlalchemy.orm import Session
 
 from database import engine, Projeto, RetornoCientista
 
-from Cientista_Prometeu.agentePrometeu import executar_pesquisa_prometeu
-from Cientista_Prometeu.promptPrometeu import gerar_prompt_prometeu
 from Cientista_Atena.agenteAtena import executar_pesquisa_atena
 from Cientista_Atena.promptAtena import gerar_prompt_atena
 from Cientista_Caliope.agenteCaliopeComparacao import caliope_comparacao, executar_caliope_comparacao
 from Cientista_Caliope.promptCaliopeComparacao import gerar_prompt_caliope_comparacao
 from Rotinas.composicoes_vae import NM_ROTINA as NM_ROTINA_VAE, executar_rotina_vae
+from Rotinas.fases_composicoes import NM_ROTINA as NM_ROTINA_FASES, executar_rotina_fases
 from Rotinas.exportar_retorno import gerar_arquivo_retorno_cientistas
 from Rotinas.retorno_cientistas import marcar_retornos_utilizados
 #########################################################################
@@ -26,7 +25,6 @@ STATUS_AGUARDANDO = 10
 STATUS_ERRO = 11
 STATUS_CALIOPE_OK = 12
 STATUS_EM_ANDAMENTO = 21
-STATUS_PROMETEU_OK = 23
 STATUS_ATENA_OK = 25
 STATUS_VAE_OK = 26
 
@@ -164,12 +162,6 @@ def rodar_agente(
     return id_retorno
 
 
-def rodar_prometeu(projeto, id_reaproveitado: int | None = None) -> int:
-    return rodar_agente(
-        projeto, "Prometeu", gerar_prompt_prometeu, executar_pesquisa_prometeu,
-        st_final=STATUS_PROMETEU_OK, id_reaproveitado=id_reaproveitado)
-
-
 def rodar_atena(projeto, id_reaproveitado: int | None = None) -> int:
     return rodar_agente(
         projeto, "Atena", gerar_prompt_atena, executar_pesquisa_atena,
@@ -183,13 +175,22 @@ def rodar_vae(projeto, id_reaproveitado: int | None = None) -> int:
         st_final=STATUS_VAE_OK, id_reaproveitado=id_reaproveitado)
 
 
-def rodar_caliope_comparacao(projeto, id_ret_atena: int, id_ret_vae: int, id_reaproveitado: int | None = None) -> int:
+def rodar_fases(projeto, id_reaproveitado: int | None = None) -> int:
+    """Calcula as fases previstas (Materials Project, 0 K) das composições do VAE e grava em fases_composicao."""
+    return rodar_agente(
+        projeto, NM_ROTINA_FASES, lambda _id: "", executar_rotina_fases,
+        st_final=None, id_reaproveitado=id_reaproveitado)
+
+
+def rodar_caliope_comparacao(projeto, id_ret_atena: int, id_ret_vae: int, id_ret_fases: int,
+                             id_reaproveitado: int | None = None) -> int:
     """Compara as composições do VAE com materiais reais e gera o relatório em Arquivos/Retornos."""
     def finalizar():
         # Na retomada, o retorno já estava gravado, mas o arquivo pode não ter sido gerado.
         if id_reaproveitado is not None:
             gerar_arquivo_retorno_cientistas(id_reaproveitado, projeto.id_projeto, caliope_comparacao.name)
-        marcar_retornos_utilizados(projeto.id_projeto, [(id_ret_atena, "Atena"), (id_ret_vae, NM_ROTINA_VAE)])
+        marcar_retornos_utilizados(projeto.id_projeto, [(id_ret_atena, "Atena"), (id_ret_vae, NM_ROTINA_VAE),
+                                                         (id_ret_fases, NM_ROTINA_FASES)])
 
     return rodar_agente(
         projeto, caliope_comparacao.name, gerar_prompt_caliope_comparacao, executar_caliope_comparacao,
@@ -198,7 +199,7 @@ def rodar_caliope_comparacao(projeto, id_ret_atena: int, id_ret_vae: int, id_rea
 
 def iniciar(id_projeto: int | None = None):
     """
-    Processa um projeto: Atena -> Rotina VAE -> Calíope (Comparação); o Prometeu está desligado.
+    Processa um projeto: Atena -> Rotina VAE -> Rotina Fases -> Calíope (Comparação e relatório final).
     Com o ID de um projeto com erro, retoma a pesquisa: as etapas que já gravaram um retorno ainda não
     utilizado não rodam de novo.
     """
@@ -221,12 +222,11 @@ def iniciar(id_projeto: int | None = None):
             return None
         return retorno_pendente(projeto.id_projeto, nm_agente)
 
-    # Prometeu desligado neste teste.
-    # id_ret_prometeu = rodar_prometeu(projeto, reaproveitar("Prometeu"))
     id_ret_atena = rodar_atena(projeto, reaproveitar("Atena"))
     id_ret_vae = rodar_vae(projeto, reaproveitar(NM_ROTINA_VAE))
+    id_ret_fases = rodar_fases(projeto, reaproveitar(NM_ROTINA_FASES))
     id_ret_caliope = rodar_caliope_comparacao(
-        projeto, id_ret_atena, id_ret_vae, reaproveitar(caliope_comparacao.name))
+        projeto, id_ret_atena, id_ret_vae, id_ret_fases, reaproveitar(caliope_comparacao.name))
 
     return projeto.id_projeto, id_ret_caliope
 

@@ -5,7 +5,7 @@ import json
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from database import ElementoProjeto, Projeto, Propriedade, ProjetoRequisitos, RetornoCientista, engine
+from database import ElementoProjeto, PesquisaElementos, Projeto, ProjetoRequisitos, engine
 #########################################################################
 
 COLUNAS_PROJETO = (
@@ -64,36 +64,11 @@ def restricoes_projeto(id_projeto: int) -> list[dict]:
     return [dict(r) for r in registros]
 
 
-def propriedades_cadastradas() -> list[dict]:
-    """Propriedades cadastradas em propriedades_materiais, que a Calíope deve pesquisar."""
+def elementos_pesquisados(id_projeto: int) -> list[dict]:
+    """Elementos levantados pela Atena (pesquisa_elementos) com a justificativa gravada."""
     with Session(engine) as session:
         registros = session.execute(
-            select(
-                Propriedade.id_propriedade,
-                Propriedade.nm_propriedade,
-                Propriedade.nm_categoria_prop,
-                Propriedade.ds_unidade,
-                Propriedade.ds_definicao,
-            ).order_by(Propriedade.nm_categoria_prop, Propriedade.id_propriedade)
+            select(PesquisaElementos.nm_sigla_elemento, PesquisaElementos.ds_observacao)
+            .where(PesquisaElementos.id_projeto == id_projeto).order_by(PesquisaElementos.id_elemento)
         ).mappings().all()
     return [dict(r) for r in registros]
-
-
-def retorno_agente(id_retorno: int, id_projeto: int, nm_agente: str) -> dict:
-    """Retorno gravado por um agente para o projeto. Erro se não existir."""
-    with Session(engine) as session:
-        resultado = session.execute(
-            select(
-                RetornoCientista.id_ret_cientistas,
-                RetornoCientista.id_projeto,
-                RetornoCientista.nm_agente,
-                RetornoCientista.ds_retorno,
-            ).where(
-                RetornoCientista.id_ret_cientistas == id_retorno,
-                RetornoCientista.id_projeto == id_projeto,
-                RetornoCientista.nm_agente == nm_agente,
-            )
-        ).mappings().one_or_none()
-    if resultado is None:
-        raise ValueError(f"Não há retorno de {nm_agente} com IDPesquisa {id_retorno} para o projeto {id_projeto}.")
-    return dict(resultado)

@@ -68,7 +68,7 @@ _creditos_reservados: dict[int, int] = {}
 def _reserva_creditos(creditos_previstos: int):
     """Confere o limite do projeto e reserva os créditos previstos até a consulta ser registrada no log.
 
-    A reserva evita que chamadas simultâneas (ex.: Atena e Argos em paralelo) passem juntas
+    A reserva evita que chamadas simultâneas (ex.: dois projetos em paralelo) passem juntas
     pela conferência com o mesmo saldo e ultrapassem o limite.
     """
     limite = os.getenv("FIRECRAWL_LIMITE_CREDITOS_PROJETO", "").strip()
