@@ -34,7 +34,8 @@ def gerar_prompt_caliope_relatorio(id_projeto: int, consolidado: list[dict], fas
          "sistema_quimico_fases": (fases.get(c["id_material"]) or [{}])[0].get("ds_sistema_quimico"),
          "resultado_comparacao": c["resultado"],
          "materiais_reais_iguais": [{"material": m["material"], "origem": m["origem"]} for m in c["iguais"]],
-         "distancia_liga_mais_proxima_base_pp": c["distancia_base_pp"]}
+         "distancia_liga_mais_proxima_base_pp": c["distancia_base_pp"],
+         "observacao_pesquisa_web": c["observacao_pesquisa_web"]}
         for c in consolidado
     ]
     return "\n\n".join([

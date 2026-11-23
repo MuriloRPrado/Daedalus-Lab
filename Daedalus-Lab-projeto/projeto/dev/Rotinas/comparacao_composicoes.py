@@ -137,7 +137,7 @@ def consolidar(analise: list[dict], saida: SaidaComparacao | None) -> list[dict]
     web = {_sigla(c.nm_composicao): c for c in (saida.comparacoes if saida else [])}
     consolidado = []
     for a in analise:
-        comp, iguais = a["composicao"], []
+        comp, iguais, observacao_web = a["composicao"], [], None
         if a["resultado_base"] is not None:
             resultado = a["resultado_base"]
             for liga in a["ligas_proximas_base"]:
@@ -148,15 +148,17 @@ def consolidar(analise: list[dict], saida: SaidaComparacao | None) -> list[dict]
         else:
             c = web.get(_sigla(a["nm_material"]))
             resultado = NAO_EXISTE
+            observacao_web = (c.ds_observacao.strip() or None) if c is not None else (
+                "Pesquisa web não executada ou sem retorno para esta composição.")
             if c is not None and c.nm_material and c.composicao_material:
                 desvios = desvio_faixas(comp, c.composicao_material)
                 total = round(sum(desvios.values()), 2)
-                resultado = EXISTE if total <= TOLERANCIA_PP else _resultado(total, False)
+                resultado = EXISTE if max(desvios.values(), default=0.0) <= TOLERANCIA_PP else _resultado(total, False)
                 if resultado == EXISTE:
                     fonte = " — ".join(t for t in (c.nm_titulo_fonte, c.nm_url_fonte) if t) or "fonte não informada"
                     iguais.append({"material": c.nm_material, "familia": None, "origem": "Pesquisa web",
                                    "fonte": fonte, "tabela": _tabela_web(comp, c.composicao_material, desvios)})
-        consolidado.append({**a, "resultado": resultado, "iguais": iguais,
+        consolidado.append({**a, "resultado": resultado, "iguais": iguais, "observacao_pesquisa_web": observacao_web,
                             "distancia_base_pp": a["ligas_proximas_base"][0]["distancia_pp"]})
     return consolidado
 

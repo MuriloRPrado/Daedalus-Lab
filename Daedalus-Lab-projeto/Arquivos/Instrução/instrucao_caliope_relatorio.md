@@ -21,4 +21,5 @@ A pesquisa segue este fluxo:
 - Não afirme que uma composição atende a um requisito de propriedade: nenhuma propriedade foi calculada nem medida.
 - As fases valem a 0 K, sem temperatura, solução sólida, cinética ou tratamento térmico; não fale em microestrutura real.
 - Se nenhum material igual foi localizado, diga isso só na Conclusão, sem detalhar as composições "Próximo"/"Não existe".
+- Se `observacao_pesquisa_web` trouxer uma limitação da pesquisa (ex.: limite de créditos, fonte inacessível), mencione-a em uma frase na Conclusão.
 - Escreva em português brasileiro, em texto corrido, sem títulos, tabelas nem listas longas. Use o nome das composições como no prompt (ex.: "Composição DAE-4").
