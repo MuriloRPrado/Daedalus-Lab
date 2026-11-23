@@ -1,6 +1,6 @@
 """Ferramentas (function tools) expostas aos agentes, montadas a partir das rotinas de Rotinas/.
 
-Cada agente importa a sua lista (FERRAMENTAS_PROMETEU, FERRAMENTAS_ATENA etc.).
+Cada agente importa a sua lista (FERRAMENTAS_ATENA e FERRAMENTAS_CALIOPE_COMPARACAO).
 Ao incluir ou retirar uma ferramenta, atualize também a seção "Ferramentas" do arquivo
 de instrução do agente em Arquivos/Instrução.
 """
@@ -14,14 +14,9 @@ from sqlalchemy.exc import SQLAlchemyError
 from Rotinas import materials_project as mp
 from Rotinas.aflow_api import consultar_propriedades_aflow
 from Rotinas.consulta_artigos import buscar_artigos_openalex, ler_artigo, localizar_pdf_aberto
-from Rotinas.exportar_retorno import consultar_retorno_agente
 from Rotinas.firecrawl_api import buscar_fichas_tecnicas, buscar_web, ler_pagina
-from Rotinas.optimade_api import buscar_estruturas_calculadas, consultar_estrutura_calculada
 from Rotinas.oqmd_api import consultar_estabilidade_oqmd
-from Rotinas.registro_materiais import (
-    listar_elementos_projeto, listar_materiais_projeto, registrar_composicao, registrar_elemento, registrar_fonte,
-    registrar_material,
-)
+from Rotinas.registro_materiais import listar_elementos_projeto, registrar_elemento, registrar_fonte
 from Rotinas.wiki_api import buscar_material_wikidata, buscar_wikipedia, consultar_material_wikidata, ler_wikipedia
 #########################################################################
 
@@ -86,16 +81,6 @@ def consultar_material_mp(material_id: str) -> dict | None:
 
 
 @ferramenta
-def consultar_estrutura_cristalina_mp(material_id: str) -> dict | None:
-    """Consulta a estrutura cristalina calculada de um registro do Materials Project (sistema cristalino, grupo espacial, parâmetros de rede).
-
-    Args:
-        material_id: ID retornado por uma busca, no formato "mp-1234".
-    """
-    return mp.consultar_estrutura_cristalina(material_id)
-
-
-@ferramenta
 def consultar_estabilidade_mp(material_id: str) -> dict | None:
     """Consulta a energia de formação e a estabilidade calculadas (energy above hull) de um registro do Materials Project.
 
@@ -115,15 +100,6 @@ def consultar_elasticidade_mp(material_id: str) -> dict | None:
     return mp.consultar_elasticidade(material_id)
 
 
-@ferramenta
-def consultar_proveniencia_mp(material_id: str) -> dict | None:
-    """Consulta a proveniência (origem e referências) dos dados de um registro do Materials Project.
-
-    Args:
-        material_id: ID retornado por uma busca, no formato "mp-1234".
-    """
-    return mp.consultar_proveniencia(material_id)
-
 
 WEB = [
     WebSearchTool(),
@@ -142,29 +118,7 @@ WIKI = [
     ferramenta(buscar_material_wikidata),
     ferramenta(consultar_material_wikidata),
 ]
-MATERIALS_PROJECT = [
-    buscar_materiais_mp,
-    buscar_materiais_por_elementos_mp,
-    consultar_material_mp,
-    consultar_estrutura_cristalina_mp,
-    consultar_estabilidade_mp,
-    consultar_elasticidade_mp,
-    consultar_proveniencia_mp,
-]
-CALCULADOS = [
-    ferramenta(buscar_estruturas_calculadas),
-    ferramenta(consultar_estrutura_calculada),
-    ferramenta(consultar_propriedades_aflow),
-    ferramenta(consultar_estabilidade_oqmd),
-]
-RELATORIO_ANTERIOR = ferramenta(consultar_retorno_agente)
 FONTES_BANCO = ferramenta(registrar_fonte)
-LISTAR_MATERIAIS = ferramenta(listar_materiais_projeto)
-
-FERRAMENTAS_PROMETEU = [
-    *WEB, *ARTIGOS, *WIKI, ferramenta(consultar_propriedades_aflow),
-    LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_material), ferramenta(registrar_composicao),
-]
 
 FERRAMENTAS_ATENA = [
     *WEB, *ARTIGOS, *WIKI,
@@ -172,29 +126,6 @@ FERRAMENTAS_ATENA = [
     consultar_elasticidade_mp, consultar_estabilidade_mp,
     ferramenta(consultar_propriedades_aflow), ferramenta(consultar_estabilidade_oqmd),
     FONTES_BANCO, ferramenta(listar_elementos_projeto), ferramenta(registrar_elemento),
-]
-
-FERRAMENTAS_ARGOS = [RELATORIO_ANTERIOR, *WEB, *ARTIGOS, *WIKI, buscar_materiais_por_elementos_mp]
-
-FERRAMENTAS_TEMIS = [
-    LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_material),
-]
-
-FERRAMENTAS_CALIOPE_COMPOSICAO = [
-    *WEB, *ARTIGOS, *WIKI, LISTAR_MATERIAIS, FONTES_BANCO, ferramenta(registrar_composicao),
-]
-
-FERRAMENTAS_CALIOPE_PROPRIEDADES = [
-    *WEB, *ARTIGOS, *WIKI, *MATERIALS_PROJECT,
-    ferramenta(consultar_propriedades_aflow), ferramenta(consultar_estabilidade_oqmd),
-    LISTAR_MATERIAIS, FONTES_BANCO,
-]
-
-FERRAMENTAS_CALIOPE_ESTRUTURA = [
-    *WEB, *ARTIGOS, *WIKI, *MATERIALS_PROJECT,
-    ferramenta(buscar_estruturas_calculadas), ferramenta(consultar_estrutura_calculada),
-    ferramenta(consultar_estabilidade_oqmd),
-    LISTAR_MATERIAIS, FONTES_BANCO,
 ]
 
 FERRAMENTAS_CALIOPE_COMPARACAO = [*WEB, *WIKI, FONTES_BANCO]

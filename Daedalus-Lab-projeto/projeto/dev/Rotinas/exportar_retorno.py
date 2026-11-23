@@ -31,22 +31,3 @@ def gerar_arquivo_retorno_cientistas(id_pesquisa: int, id_projeto: int, nm_agent
     else:
         return "Não existe retorno registrado"                                                          # Caso não tenha registro, retorno essa mensagem
 
-def consultar_retorno_agente(id_pesquisa: int, id_projeto: int, nm_agente: str) -> dict | None:
-    """Recupera o texto de um retorno de agente gravado na tabela retorno_cientistas.
-
-    Args:
-        id_pesquisa: ID do retorno (id_ret_cientistas) informado no prompt.
-        id_projeto: ID do projeto.
-        nm_agente: Nome do agente que gravou o retorno (ex.: "Prometeu").
-    """
-    with Session(engine) as session:
-        conteudo = session.execute(
-            select(RetornoCientista.ds_retorno).where(
-                RetornoCientista.id_ret_cientistas == id_pesquisa,
-                RetornoCientista.id_projeto == id_projeto,
-                RetornoCientista.nm_agente == nm_agente,
-            )
-        ).scalar_one_or_none()
-    if conteudo is None:
-        return None
-    return {"encontrado": True, "conteudo": conteudo}

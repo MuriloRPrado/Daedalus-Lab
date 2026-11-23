@@ -219,3 +219,21 @@ class ElementosFontes(Base):
     id_ele_fonte = Column(Integer, primary_key=True)
     id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
     id_elemento = Column(Integer, ForeignKey("pesquisa_elementos.id_elemento"))
+'''Tabela que armazena as fases previstas (calculadas) para as composições geradas pelo VAE'''
+class FasesComposicao(Base):
+    __tablename__ = 'fases_composicao'
+
+    id_fase = Column(Integer, primary_key=True)
+    id_material = Column(Integer, ForeignKey("materiais.id_material"), nullable=False)
+    nm_fase = Column(VARCHAR(100), nullable=False)
+    cd_material_mp = Column(VARCHAR(50))
+    nm_grupo_espacial = Column(VARCHAR(30))
+    nm_sistema_cristalino = Column(VARCHAR(30))
+    pe_fracao_atomica = Column(Numeric(7,4))
+    pe_fracao_massa = Column(Numeric(7,4))
+    vl_energia_formacao = Column(Numeric(10,6))
+    ds_sistema_quimico = Column(VARCHAR(100))
+    ds_versao_base = Column(VARCHAR(30))
+    id_fonte = Column(Integer, ForeignKey("fontes.id_fonte"))
+    ds_observacao = Column(Text)
+    dt_criacao = Column(TIMESTAMP(timezone=True), server_default=func.now())

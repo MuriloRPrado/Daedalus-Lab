@@ -5,6 +5,7 @@ Instalação: python -m pip install mp-api pymatgen
 """
 # BIBLIOTECAS
 import json
+import warnings
 import re
 import os
 from datetime import datetime, timezone
@@ -187,71 +188,6 @@ def consultar_material_por_id(material_id: str) -> dict | None:
 ##############################################################################
 
 ##############################################################################
-"""CONSULTA DADOS DA ESTRUTURA CRISTALINA DO MATERIAL
-- Estrutura do registro: lattice, sites, ocupacoes e coordenadas.
-- Na estrutura serializada, abc sao coordenadas fracionarias e xyz sao
-- cartesianas em angstrom. lattice inclui parametros e matriz da rede.
-- Nao converte automaticamente para uma celula convencional."""
-def consultar_estrutura_cristalina(material_id: str) -> dict | None:
-    resultado = _consultar_resumo(
-        material_id,
-        [
-            "material_id",
-            "formula_pretty",
-            "structure",
-            "symmetry",
-            "density",
-            "origins",
-        ],
-    )
-
-    if resultado is None:
-        return None
-
-    dados = resultado["dados"]
-
-    estrutura = dados.get("structure") or {}
-    rede = estrutura.get("lattice") or {}
-    simetria = dados.get("symmetry") or {}
-
-    resultado["dados"] = {
-        "material_id": dados.get("material_id"),
-        "formula_fase": dados.get("formula_pretty"),
-
-        # Exigem identificação complementar; não inferir pela fórmula.
-        "nm_fase": None,
-        "nm_estrutura_cristalina": None,
-
-        # Simetria informada pelo Materials Project.
-        "sistema_cristalino": simetria.get("crystal_system"),
-        "ds_grupo_espacial": simetria.get("symbol"),
-        "numero_grupo_espacial": simetria.get("number"),
-
-        # Comprimentos em ångströms (Å).
-        "a_angstrom": rede.get("a"),
-        "b_angstrom": rede.get("b"),
-        "c_angstrom": rede.get("c"),
-
-        # Ângulos em graus.
-        "alfa_graus": rede.get("alpha"),
-        "beta_graus": rede.get("beta"),
-        "gama_graus": rede.get("gamma"),
-
-        # Densidade da estrutura consultada, não da liga multifásica.
-        "densidade_teorica_fase_g_cm3": dados.get("density"),
-
-        # Não informadas por esta consulta.
-        "temperatura_K": None,
-        "pressao_Pa": None,
-
-        # Preserva a célula e as posições atômicas para rastreabilidade.
-        "estrutura": dados.get("structure"),
-        "origens": dados.get("origins"),
-        "representacao_celula": "Como retornada pelo Materials Project",
-    }
-
-    return resultado
-##############################################################################
 
 ##############################################################################
 """FUNÇÃO PARA CONSULTAR A ESTABILIDADE DO MATERIAL
@@ -286,20 +222,34 @@ def consultar_elasticidade(material_id: str) -> dict | None:
 ##############################################################################
 
 ##############################################################################
-"""FUNÇÃO PARA CONSULTAR A ORIGEM DOS DADOS
-- Proveniencia disponivel no MP; nao comprova ensaio experimental.
-- Para rastrear uma propriedade ate seu calculo, combine este retorno com origins do resumo e, quando necessario, consulte o task_id."""
-def consultar_proveniencia(material_id: str) -> dict | None:
-    _validar_id(material_id)
+
+##############################################################################
+"""DIAGRAMA DE FASES (ENVOLTÓRIA CONVEXA) DE UM SISTEMA QUÍMICO
+- Entradas compatíveis (GGA/GGA+U/r2SCAN misturadas pelo MP) do sistema e de todos os subsistemas.
+- Devolve o PhaseDiagram do pymatgen, a versão do banco e a simetria das fases estáveis.
+- Dados calculados por DFT a 0 K: não consideram temperatura nem solução sólida."""
+def diagrama_fases(elementos: list[str]) -> dict:
+    from pymatgen.analysis.phase_diagram import PhaseDiagram
+
+    if not elementos:
+        raise ValueError("Informe pelo menos um elemento para o diagrama de fases.")
+    sistema = "-".join(sorted(set(elementos)))
 
     def consultar(mpr):
-        documentos = mpr.materials.provenance.search(
-            material_ids=[material_id], all_fields=True,
-        )
-        if not documentos:
-            return None
-        return _retorno(mpr, "materials.provenance",
-                        [_json_simples(d) for d in documentos], material_id=material_id)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            entradas = mpr.get_entries_in_chemsys(sorted(set(elementos)))
+        diagrama = PhaseDiagram(entradas)
+        ids = sorted({str(e.data.get("material_id")) for e in diagrama.stable_entries if e.data.get("material_id")})
+        simetria = {}
+        if ids:
+            for doc in mpr.materials.summary.search(material_ids=ids, fields=["material_id", "symmetry"]):
+                sim = doc.symmetry
+                simetria[str(doc.material_id)] = {
+                    "grupo_espacial": getattr(sim, "symbol", None),
+                    "sistema_cristalino": getattr(getattr(sim, "crystal_system", None), "value", None),
+                }
+        return {"sistema_quimico": sistema, "diagrama": diagrama, "versao_banco": mpr.db_version,
+                "simetria": simetria}
 
-    return _executar("leitura", f"materials.provenance {material_id}", consultar)
-##############################################################################
+    return _executar("leitura", f"phase_diagram chemsys={sistema}", consultar)
