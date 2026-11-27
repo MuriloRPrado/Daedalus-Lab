@@ -222,3 +222,7 @@ __marimo__/
 
 # Retornos dos agentes exportados em tempo de execução
 Daedalus-Lab-projeto/Arquivos/Retornos/
+
+# Otimizacao: dados baixados e modelos treinados (gerados por treinar_modelo.py)
+Otimizacao/dados/cache/
+Otimizacao/modelos/
